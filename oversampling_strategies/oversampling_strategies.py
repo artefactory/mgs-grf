@@ -270,11 +270,13 @@ class MGSY(BaseOverSampler):
     """
 
     def __init__(
-        self, K: int, llambda: float, sampling_strategy="auto", random_state: Optional[int] = None
+        self, K: int, llambda: float, kind_sampling='cholesky', batch_size_sampling: Optional[int] = None, sampling_strategy="auto", random_state: Optional[int] = None
     ):
         super().__init__(sampling_strategy=sampling_strategy)
         self.K = K
         self.llambda = llambda
+        self.kind_sampling = kind_sampling
+        self.batch_size_sampling = batch_size_sampling
         self.random_state = random_state
         self._rng = np.random.RandomState(random_state)
 
@@ -335,10 +337,17 @@ class MGSY(BaseOverSampler):
         centered_X = centered_X.reshape(num_samples, self.K + 1, dimension)
         covs = self.llambda * np.matmul(np.swapaxes(centered_X, 1, 2), centered_X) / (self.K + 1)
 
-        eigen_values, eigen_vectors = np.linalg.eigh(covs)
-        eigen_values[eigen_values > 1e-10] = eigen_values[eigen_values > 1e-10] ** 0.5
-        As = [eigen_vectors[i].dot(eigen_values[i]) for i in range(len(eigen_values))]
-
+        if self.kind_sampling=='cholescky':
+            As = np.linalg.cholesky(covs + (1e-10)*np.identity(dimension))## add parameter for 1e-10 ?
+        elif self.kind_sampling=='svd':
+            eigen_values, eigen_vectors = np.linalg.eigh(covs)
+            eigen_values[eigen_values > 1e-10] = eigen_values[eigen_values > 1e-10] ** 0.5
+            As = [eigen_vectors[i].dot(eigen_values[i]) for i in range(len(eigen_values))]
+        else:
+            raise ValueError(
+                "kind_sampling of MGS not supported"
+                "Available value : cholescky,svd "
+            )
         return mus, As
 
     def _generate_samples(
@@ -387,10 +396,12 @@ class MGSWeighted(MGSY):
         self,
         K: int,
         llambda: float,
+        kind_sampling='cholesky',
+        batch_size_sampling: Optional[int] = None,
         sampling_strategy: str = "auto",
         random_state: Optional[int] = None,
     ):
-        super().__init__(K, llambda, sampling_strategy, random_state)
+        super().__init__(K, llambda,kind_sampling, batch_size_sampling, sampling_strategy, random_state)
         self._rng = np.random.default_rng(random_state)
 
     def _compute_mu_and_cov(
@@ -414,11 +425,19 @@ class MGSWeighted(MGSY):
 
         diag_matrices = np.zeros((n, m, m))
         diag_matrices[np.arange(n)[:, None], np.arange(m), np.arange(m)] = weights
-
         covs = self.llambda * np.swapaxes(centered_X, 1, 2) @ diag_matrices @ centered_X
-        eigen_values, eigen_vectors = np.linalg.eigh(covs)
-        eigen_values[eigen_values > 1e-10] = eigen_values[eigen_values > 1e-10] ** 0.5
-        As = [eigen_vectors[i].dot(eigen_values[i]) for i in range(len(eigen_values))]
+
+        if self.kind_sampling=='cholescky':
+            As = np.linalg.cholesky(covs + (1e-10)*np.identity(dimension))## add parameter for 1e-10 ?
+        elif self.kind_sampling=='svd':
+            eigen_values, eigen_vectors = np.linalg.eigh(covs)
+            eigen_values[eigen_values > 1e-10] = eigen_values[eigen_values > 1e-10] ** 0.5
+            As = [eigen_vectors[i].dot(eigen_values[i]) for i in range(len(eigen_values))]
+        else:
+            raise ValueError(
+                "kind_sampling of MGS not supported"
+                "Available value : cholescky,svd "
+            )
 
         return mus, As
 
