@@ -360,7 +360,6 @@ class MGSY(BaseOverSampler):
         if self.batch_size_sampling is None : ## Case no loop
             u = self._rng.normal(loc=0, scale=1, size=(n_synthetic_sample,dimension))
             indices = np.random.randint(n_minority,size=n_synthetic_sample)
-            #new_observation = mus[i, :] + As[i].dot(u)
             new_samples = [mus[central_point]+ As[central_point].dot(u[central_point]) for central_point in indices]
             new_samples = np.array(new_samples)
 
@@ -379,6 +378,12 @@ class MGSY(BaseOverSampler):
                 indices = np.random.randint(n_minority,size=self.batch_size_sampling)
                 new_observations = [mus[central_point]+ As[central_point].dot(u[central_point]) for central_point in indices]
                 new_samples[(i*self.batch_size_sampling):((i+1)*self.batch_size_sampling), :] = new_observations
+            # rest :
+            n_rest = n_synthetic_sample % self.batch_size_sampling
+            u = self._rng.normal(loc=0, scale=1, size=(n_rest,dimension))
+            indices = np.random.randint(n_minority,size=n_rest)
+            new_observations = [mus[central_point]+ As[central_point].dot(u[central_point]) for central_point in indices]
+            new_samples[-n_rest:, :] = new_observations
         return new_samples
 
 
@@ -429,7 +434,7 @@ class MGSWeighted(MGSY):
         centered_X = X_positives[neighbors_by_index.flatten()] - np.repeat(mus, self.K + 1, axis=0)
         centered_X = centered_X.reshape(len(X_positives), self.K + 1, dimension)
 
-        epsilon = 1e-5
+        epsilon = 1e-6
         diff = all_neighbors_reshaped - X_positives.reshape(
             len(X_positives), 1, X_positives.shape[1]
         )
