@@ -314,7 +314,6 @@ class MGSY(BaseOverSampler):
         )
 
         mus, As = self._compute_mu_and_cov(X_minority, neighbors_by_index, dimension, num_samples)
-
         new_samples = self._generate_samples(num_samples, n_minority, dimension, mus, As)
 
         # concat
@@ -346,7 +345,7 @@ class MGSY(BaseOverSampler):
         else:
             raise ValueError(
                 "kind_sampling of MGS not supported"
-                "Available value : cholescky,svd "
+                "Available values : cholescky,svd "
             )
         return mus, As
 
@@ -358,11 +357,28 @@ class MGSY(BaseOverSampler):
         mus: np.ndarray,
         As: np.ndarray,
     ) -> np.ndarray:
-        new_samples = np.zeros((n_synthetic_sample, dimension))
-        for i in range(n_synthetic_sample):
-            u = self._rng.normal(loc=0, scale=1, size=dimension)
-            new_observation = mus[i, :] + As[i].dot(u)
-            new_samples[i, :] = new_observation
+        if self.batch_size_sampling is None : ## Case no loop
+            u = self._rng.normal(loc=0, scale=1, size=(n_synthetic_sample,dimension))
+            indices = np.random.randint(n_minority,size=n_synthetic_sample)
+            #new_observation = mus[i, :] + As[i].dot(u)
+            new_samples = [mus[central_point]+ As[central_point].dot(u[central_point]) for central_point in indices]
+            new_samples = np.array(new_samples)
+
+        elif self.batch_size_sampling==1: # Case with loop
+            new_samples = np.zeros((n_synthetic_sample, dimension))
+            for i in range(n_synthetic_sample):
+                u = self._rng.normal(loc=0, scale=1, size=dimension)
+                new_observation = mus[i, :] + As[i].dot(u)
+                new_samples[i, :] = new_observation
+
+        else : # Case batch loop
+            n_batch = n_synthetic_sample // self.batch_size_sampling
+            new_samples = np.zeros((n_synthetic_sample, dimension))
+            for i in range(n_batch):
+                u = self._rng.normal(loc=0, scale=1, size=(self.batch_size_sampling,dimension))
+                indices = np.random.randint(n_minority,size=self.batch_size_sampling)
+                new_observations = [mus[central_point]+ As[central_point].dot(u[central_point]) for central_point in indices]
+                new_samples[(i*self.batch_size_sampling):((i+1)*self.batch_size_sampling), :] = new_observations
         return new_samples
 
 
@@ -436,7 +452,7 @@ class MGSWeighted(MGSY):
         else:
             raise ValueError(
                 "kind_sampling of MGS not supported"
-                "Available value : cholescky,svd "
+                "Available values : cholescky,svd "
             )
 
         return mus, As
