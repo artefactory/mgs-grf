@@ -336,7 +336,7 @@ class MGSY(BaseOverSampler):
         centered_X = centered_X.reshape(num_samples, self.K + 1, dimension)
         covs = self.llambda * np.matmul(np.swapaxes(centered_X, 1, 2), centered_X) / (self.K + 1)
 
-        if self.kind_sampling=='cholescky':
+        if self.kind_sampling=='cholesky':
             As = np.linalg.cholesky(covs + (1e-10)*np.identity(dimension))## add parameter for 1e-10 ?
         elif self.kind_sampling=='svd':
             eigen_values, eigen_vectors = np.linalg.eigh(covs)
@@ -359,8 +359,8 @@ class MGSY(BaseOverSampler):
     ) -> np.ndarray:
         if self.batch_size_sampling is None : ## Case no loop
             u = self._rng.normal(loc=0, scale=1, size=(n_synthetic_sample,dimension))
-            indices = np.random.randint(n_minority,size=n_synthetic_sample)
-            new_samples = [mus[central_point]+ As[central_point].dot(u[central_point]) for central_point in indices]
+            #indices = np.random.randint(n_minority,size=n_synthetic_sample)
+            new_samples = [mus[central_point]+ As[central_point].dot(u[central_point]) for central_point in range(n_synthetic_sample)]
             new_samples = np.array(new_samples)
 
         elif self.batch_size_sampling==1: # Case with loop
@@ -375,14 +375,14 @@ class MGSY(BaseOverSampler):
             new_samples = np.zeros((n_synthetic_sample, dimension))
             for i in range(n_batch):
                 u = self._rng.normal(loc=0, scale=1, size=(self.batch_size_sampling,dimension))
-                indices = np.random.randint(n_minority,size=self.batch_size_sampling)
-                new_observations = [mus[central_point]+ As[central_point].dot(u[central_point]) for central_point in indices]
-                new_samples[(i*self.batch_size_sampling):((i+1)*self.batch_size_sampling), :] = new_observations
+                actual_batch_indices = np.arange(start=i*self.batch_size_sampling,stop=(i+1)*self.batch_size_sampling,step=1)
+                new_observations = [mus[central_point]+ As[central_point].dot(u[ind]) for ind,central_point in enumerate(actual_batch_indices)]
+                new_samples[actual_batch_indices, :] = new_observations
             # rest :
             n_rest = n_synthetic_sample % self.batch_size_sampling
             u = self._rng.normal(loc=0, scale=1, size=(n_rest,dimension))
-            indices = np.random.randint(n_minority,size=n_rest)
-            new_observations = [mus[central_point]+ As[central_point].dot(u[central_point]) for central_point in indices]
+            actual_batch_indices = np.arange(start=n_batch*self.batch_size_sampling,stop=n_synthetic_sample,step=1)
+            new_observations = [mus[central_point]+ As[central_point].dot(u[ind]) for ind,central_point in enumerate(actual_batch_indices)]
             new_samples[-n_rest:, :] = new_observations
         return new_samples
 
