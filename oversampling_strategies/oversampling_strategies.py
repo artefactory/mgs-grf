@@ -266,42 +266,6 @@ class MGS2(BaseOverSampler):
         
         return oversampled_X, oversampled_y
 
-    def _compute_mu_and_cov( ### WEIGHTING
-        self, X_positives: np.ndarray, neighbors_by_index: np.ndarray, dimension: int
-    ) -> Tuple[np.ndarray, np.ndarray]:
-        all_neighbors = X_positives[neighbors_by_index.flatten()]
-        all_neighbors_reshaped = all_neighbors.reshape(len(X_positives), self.K + 1, dimension)
-        mus = np.mean(all_neighbors_reshaped, axis=1)
-        centered_X = X_positives[neighbors_by_index.flatten()] - np.repeat(mus, self.K + 1, axis=0)
-        centered_X = centered_X.reshape(len(X_positives), self.K + 1, dimension)
-
-        epsilon = 1e-6
-        diff = all_neighbors_reshaped - X_positives.reshape(
-            len(X_positives), 1, X_positives.shape[1]
-        )
-        distances = np.linalg.norm(diff, axis=2)
-        inverse_distances = 1 / (distances + epsilon)
-        weights = inverse_distances / (np.sum(inverse_distances, axis=1).reshape(-1, 1))
-        n = X_positives.shape[0]
-        m = self.K + 1
-
-        diag_matrices = np.zeros((n, m, m))
-        diag_matrices[np.arange(n)[:, None], np.arange(m), np.arange(m)] = weights
-        covs = self.llambda * np.swapaxes(centered_X, 1, 2) @ diag_matrices @ centered_X
-
-        if self.kind_sampling=='cholescky':
-            As = np.linalg.cholesky(covs + (1e-10)*np.identity(dimension))## add parameter for 1e-10 ?
-        elif self.kind_sampling=='svd':
-            eigen_values, eigen_vectors = np.linalg.eigh(covs)
-            eigen_values[eigen_values > 1e-10] = eigen_values[eigen_values > 1e-10] ** 0.5
-            As = [eigen_vectors[i].dot(eigen_values[i]) for i in range(len(eigen_values))]
-        else:
-            raise ValueError(
-                "kind_sampling of MGS not supported"
-                "Available values : cholescky,svd "
-            )
-
-        return mus, As
 
 
 

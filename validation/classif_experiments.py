@@ -10,8 +10,7 @@ from sklearn.metrics import auc
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import roc_auc_score
 
-from sklearn.metrics import (roc_curve,auc,precision_recall_curve,roc_auc_score)
-from sklearn.metrics import PrecisionRecallDisplay,RocCurveDisplay
+from sklearn.metrics import (roc_curve,precision_recall_curve)
 from scipy import interpolate
 
 
@@ -648,7 +647,6 @@ def plot_curves_tuned(output_dir,start_filename,n_iter,list_name_strat,list_name
     plt.show()
 
 
-from sklearn.metrics import (precision_recall_curve,auc)
 def pr_auc_custom(y_true, y_score):
     precision, recall, tresh = precision_recall_curve(y_true, y_score)
     res_auc = auc(recall,precision)

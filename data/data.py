@@ -470,7 +470,6 @@ def load_wine_data():
     return X_wine,y_wine
 
 
-from ucimlrepo import fetch_ucirepo 
 def load_BankMarketing_data():
     """
     Load BankChurners data set from UCI Irvine.
