@@ -1,5 +1,6 @@
 import random
 import math
+from typing import Optional, Tuple
 
 import numpy as np
 from imblearn.over_sampling import SMOTE
@@ -180,7 +181,7 @@ class MGS2(BaseOverSampler):
     """
 
     def __init__(
-        self, K, llambda, sampling_strategy="auto", random_state=None
+        self, K, llambda, sampling_strategy="auto", random_state=None, weighted_cov=False
     ):
         """
         llambda is a float.
@@ -189,6 +190,7 @@ class MGS2(BaseOverSampler):
         self.K = K
         self.llambda = llambda
         self.random_state = random_state  
+        self.weighted_cov = weighted_cov
 
     def _fit_resample(self, X, y=None, n_final_sample=None):
         """
@@ -218,18 +220,32 @@ class MGS2(BaseOverSampler):
 
         n_synthetic_sample = n_final_sample - n_minoritaire
 
-
         # computing mu and covariance at once for every minority class points
         all_neighbors = X_positifs[neighbors_by_index.flatten()]
-        mus = (1 / (self.K+1)) * all_neighbors.reshape(len(X_positifs), self.K + 1, dimension).sum(axis=1)
+        if self.weighted_cov:
+            # We sample from central point
+            mus = X_positifs
+        else:
+            # We sample from mean of neighbors
+            mus = (1 / (self.K+1)) * all_neighbors.reshape(len(X_positifs), self.K + 1, dimension).sum(axis=1)
         centered_X = X_positifs[neighbors_by_index.flatten()] - np.repeat(mus, self.K + 1, axis=0)
         centered_X = centered_X.reshape(len(X_positifs), self.K + 1, dimension)
-        covs = self.llambda * np.matmul(np.swapaxes(centered_X,1,2), centered_X) / (self.K+1)
         
+        if self.weighted_cov:
+            distances = (centered_X ** 2).sum(axis=-1)
+            distances[distances > 1e-10] = distances[distances > 1e-10] ** -.25
+            print(distances.shape)
+            # inv sqrt for positives only and half of power for multiplication below
+            distances /= distances.sum(axis=-1)[:, np.newaxis]
+            centered_X = np.repeat(distances[:,:,np.newaxis] ** .5, dimension, axis=2) * centered_X
+
+        covs = self.llambda * np.matmul(np.swapaxes(centered_X,1,2), centered_X) / (self.K+1)
+
         # spectral decomposition of all covariances
-        eigen_values, eigen_vectors = np.linalg.eigh(covs) ## long
-        eigen_values[eigen_values > 1e-10] = eigen_values[eigen_values > 1e-10] ** .5
-        As = [eigen_vectors[i].dot(eigen_values[i]) for i in range(len(eigen_values))]
+        #eigen_values, eigen_vectors = np.linalg.eigh(covs) ## long
+        #eigen_values[eigen_values > 1e-10] = eigen_values[eigen_values > 1e-10] ** .5
+        #As = [eigen_vectors[i].dot(eigen_values[i]) for i in range(len(eigen_values))]
+        As = np.linalg.cholesky(covs + 1e-10 * np.identity(dimension)) ## add parameter for 1e-10 ?
 
         np.random.seed(self.random_state)
         # sampling all new points
@@ -250,7 +266,49 @@ class MGS2(BaseOverSampler):
         
         return oversampled_X, oversampled_y
 
-from typing import Optional, Tuple
+    def _compute_mu_and_cov( ### WEIGHTING
+        self, X_positives: np.ndarray, neighbors_by_index: np.ndarray, dimension: int
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        all_neighbors = X_positives[neighbors_by_index.flatten()]
+        all_neighbors_reshaped = all_neighbors.reshape(len(X_positives), self.K + 1, dimension)
+        mus = np.mean(all_neighbors_reshaped, axis=1)
+        centered_X = X_positives[neighbors_by_index.flatten()] - np.repeat(mus, self.K + 1, axis=0)
+        centered_X = centered_X.reshape(len(X_positives), self.K + 1, dimension)
+
+        epsilon = 1e-6
+        diff = all_neighbors_reshaped - X_positives.reshape(
+            len(X_positives), 1, X_positives.shape[1]
+        )
+        distances = np.linalg.norm(diff, axis=2)
+        inverse_distances = 1 / (distances + epsilon)
+        weights = inverse_distances / (np.sum(inverse_distances, axis=1).reshape(-1, 1))
+        n = X_positives.shape[0]
+        m = self.K + 1
+
+        diag_matrices = np.zeros((n, m, m))
+        diag_matrices[np.arange(n)[:, None], np.arange(m), np.arange(m)] = weights
+        covs = self.llambda * np.swapaxes(centered_X, 1, 2) @ diag_matrices @ centered_X
+
+        if self.kind_sampling=='cholescky':
+            As = np.linalg.cholesky(covs + (1e-10)*np.identity(dimension))## add parameter for 1e-10 ?
+        elif self.kind_sampling=='svd':
+            eigen_values, eigen_vectors = np.linalg.eigh(covs)
+            eigen_values[eigen_values > 1e-10] = eigen_values[eigen_values > 1e-10] ** 0.5
+            As = [eigen_vectors[i].dot(eigen_values[i]) for i in range(len(eigen_values))]
+        else:
+            raise ValueError(
+                "kind_sampling of MGS not supported"
+                "Available values : cholescky,svd "
+            )
+
+        return mus, As
+
+
+
+
+
+
+
 class MGSY(BaseOverSampler):
     """Class to perform MGS.
 
