@@ -241,7 +241,7 @@ class MGS2(BaseOverSampler):
         if self.weighted_cov:
             distances = (centered_X**2).sum(axis=-1)
             distances[distances > 1e-10] = distances[distances > 1e-10] ** -0.25
-            print(distances.shape)
+
             # inv sqrt for positives only and half of power for multiplication below
             distances /= distances.sum(axis=-1)[:, np.newaxis]
             centered_X = (
