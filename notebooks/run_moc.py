@@ -2,12 +2,9 @@ import os
 import sys
 sys.path.insert(1, os.path.abspath(os.path.join(os.getcwd(), os.pardir)))
 from pathlib import Path
-from collections import Counter
 
-import numpy as np
-import pandas as pd
 from sklearn.ensemble import RandomForestClassifier 
-from sklearn.model_selection import GridSearchCV, StratifiedKFold
+from sklearn.model_selection import StratifiedKFold
 from imblearn.under_sampling import RandomUnderSampler
 from imblearn.over_sampling import SMOTENC 
 from sklearn.pipeline import Pipeline
@@ -20,7 +17,7 @@ from sklearn.preprocessing import FunctionTransformer
 from oversampling_strategies.oversampling_strategies import (SMOTE_cat,MGS_cat,MGS_NC,MultiOutPutClassifier_and_MGS,
                                                                 NoSampling)
 from validation.classif_experiments import run_eval,read_subsampling_indices
-from data.data import load_BankMarketing_data,load_BankChurners_data,load_TelcoChurn_data
+from data.data import load_BankChurners_data
 
 ##################################################
 ##################################################
