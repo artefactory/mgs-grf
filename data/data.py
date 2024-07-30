@@ -606,3 +606,50 @@ def load_TelcoChurn_data():
     )
 
     return X_telco, y_telco
+
+
+def decode_one_hot(row,columns):
+    """
+    Parameters
+    ----------
+    row : pd.DataFrame instance with shape[0]=1
+    columns : list
+    ----------
+    Return the elment instance c of columns for which row[c]=1.
+    """
+    for c in columns:
+        if row[c] == 1:
+            return c
+
+def load_covertype_data(dict_mapping={1:0,4:1}): #{1:0, 2: 0, 3:0, 4:0, 5:0, 6:0 ,7:0 ,8:0}
+    """
+    Load Covertype data set from UCI Irvine.
+    """
+    covertype = fetch_ucirepo(id=31) # fetch dataset 
+    original_X = covertype.data.features # data (as pandas dataframes) 
+    original_y = covertype.data.targets 
+    X = original_X[['Elevation', 'Aspect', 'Slope', 'Horizontal_Distance_To_Hydrology','Vertical_Distance_To_Hydrology',
+                    'Horizontal_Distance_To_Roadways','Hillshade_9am', 'Hillshade_Noon', 'Hillshade_3pm',
+                    'Horizontal_Distance_To_Fire_Points']].copy()
+    
+    columns_soil = ['Soil_Type1','Soil_Type2', 'Soil_Type3', 'Soil_Type4', 'Soil_Type5', 'Soil_Type6','Soil_Type7', 'Soil_Type8',
+                    'Soil_Type9', 'Soil_Type10', 'Soil_Type11','Soil_Type12', 'Soil_Type13', 'Soil_Type14', 'Soil_Type15','Soil_Type16',
+                    'Soil_Type17', 'Soil_Type18', 'Soil_Type19','Soil_Type20', 'Soil_Type21', 'Soil_Type22', 'Soil_Type23','Soil_Type24',
+                    'Soil_Type25', 'Soil_Type26', 'Soil_Type27','Soil_Type28', 'Soil_Type29', 'Soil_Type30', 'Soil_Type31','Soil_Type32',
+                    'Soil_Type33', 'Soil_Type34', 'Soil_Type35','Soil_Type36', 'Soil_Type37', 'Soil_Type38', 'Soil_Type39','Soil_Type40']
+    series_soil = original_X[columns_soil].apply(decode_one_hot,columns=columns_soil,axis=1)
+    X[['Soil_Type']]=series_soil.to_frame()
+    
+    columns_wilderness = ['Wilderness_Area1','Wilderness_Area2', 'Wilderness_Area3','Wilderness_Area4']
+    series_wilderness= original_X[columns_wilderness].apply(decode_one_hot,columns=columns_wilderness,axis=1)
+    X[['Wilderness_Area']] = series_wilderness.to_frame()
+
+    if dict_mapping is not None:        
+        df = pd.concat([X, original_y], axis=1)
+        df = df[df["Cover_Type"].isin([int(key) for key in dict_mapping.keys()])].copy()
+        df.replace({"Cover_Type": dict_mapping}, inplace=True)
+        X = df.drop(["Cover_Type"], axis=1).to_numpy()
+        y = df[["Cover_Type"]].to_numpy().ravel()
+        return X,y
+    else: 
+        return X.to_numpy(),original_y.to_numpy().ravel()
