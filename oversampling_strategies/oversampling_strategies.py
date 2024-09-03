@@ -573,6 +573,256 @@ class NoSampling(object):
 ##########################################
 ######## CATEGORICAL #####################
 #########################################
+class WMGS_NC(BaseOverSampler):
+    """
+    MGS NC strategy
+    """
+
+    def __init__(
+        self,
+        K,
+        categorical_features,
+        version,
+        weighted_cov=True,
+        n_points=None,
+        llambda=1.0,
+        sampling_strategy="auto",
+        random_state=None,
+    ):
+        """
+        llambda is a float.
+        """
+        super().__init__(sampling_strategy=sampling_strategy)
+        self.K = K
+        self.llambda = llambda
+        if n_points is None:
+            self.n_points = K
+        else:
+            self.n_points = n_points
+        self.categorical_features = categorical_features
+        self.version = version
+        self.weighted_cov = weighted_cov
+        self.random_state = random_state
+
+    def _check_X_y(self, X, y):
+        """Overwrite the checking to let pass some string for categorical
+        features.
+        """
+        y, binarize_y = check_target_type(y, indicate_one_vs_all=True)
+        # X = _check_X(X)
+        # self._check_n_features(X, reset=True)
+        # self._check_feature_names(X, reset=True)
+        return X, y, binarize_y
+
+    def _validate_estimator(self):
+        super()._validate_estimator()
+        if self.categorical_features_.size == 0:
+            raise ValueError(
+                "MGS-NC is not designed to work only with numerical "
+                "features. It requires some categorical features."
+            )
+
+    def _fit_resample(self, X, y=None, n_final_sample=None):
+        """
+        if y=None, all points are considered positive, and oversampling on all X
+        if n_final_sample=None, objective is balanced data.
+        """
+
+        if y is None:
+            X_positifs = X
+            X_negatifs = np.ones((0, X.shape[1]))
+            assert (
+                n_final_sample is not None
+            ), "You need to provide a number of final samples."
+        else:
+            X_positifs = X[y == 1]
+            X_negatifs = X[y == 0]
+            if n_final_sample is None:
+                n_final_sample = (y == 0).sum()
+
+        if len(self.categorical_features) == X.shape[1]:
+            raise ValueError(
+                "MGS-NC is not designed to work only with categorical "
+                "features. It requires some numerical features."
+            )
+
+        bool_mask = np.ones((X_positifs.shape[1]), dtype=bool)
+        bool_mask[self.categorical_features] = False
+        X_positifs_all_features = X_positifs.copy()
+        X_negatifs_all_features = X_negatifs.copy()
+        X_positifs = X_positifs_all_features[:, bool_mask]  ## continuous features
+        X_negatifs = X_negatifs_all_features[:, bool_mask]  ## continuous features
+        X_positifs_categorical = X_positifs_all_features[:, ~bool_mask]
+        X_negatifs_categorical = X_negatifs_all_features[:, ~bool_mask]
+        X_positifs = X_positifs.astype(float)
+
+        n_minoritaire = X_positifs.shape[0]
+        dimension_continuous = X_positifs.shape[1]  ## of continuous features
+
+        enc = OneHotEncoder(handle_unknown="ignore")  ## encoding
+        X_positifs_all_features_enc = enc.fit_transform(
+            X_positifs_all_features
+        ).toarray()
+        cste_med = np.median(
+            np.sqrt(np.var(X_positifs, axis=0))
+        )  ## med constante from continuous variables
+        if not math.isclose(cste_med, 0):
+            X_positifs_all_features_enc[:, dimension_continuous:] = cste_med / np.sqrt(
+                2
+            )  # With one-hot encoding, the median will be repeated twice. We need
+        # to divide by sqrt(2) such that we only have one median value
+        # contributing to the Euclidean distance
+        neigh = NearestNeighbors(n_neighbors=self.K, algorithm="ball_tree")
+        neigh.fit(X_positifs_all_features_enc)
+        neighbor_by_dist, neighbor_by_index = neigh.kneighbors(
+            X=X_positifs_all_features_enc, n_neighbors=self.K + 1, return_distance=True
+        )
+
+        n_synthetic_sample = n_final_sample - n_minoritaire
+        # computing mu and covariance at once for every minority class points
+        all_neighbors = X_positifs[neighbor_by_index.flatten()]
+        if self.weighted_cov:
+            # We sample from central point
+            mus = X_positifs
+        else:
+            # We sample from mean of neighbors
+            mus = (1 / (self.K + 1)) * all_neighbors.reshape(
+                len(X_positifs), self.K + 1, dimension_continuous
+            ).sum(axis=1)
+        centered_X = X_positifs[neighbor_by_index.flatten()] - np.repeat(
+            mus, self.K + 1, axis=0
+        )
+        centered_X = centered_X.reshape(len(X_positifs), self.K + 1, dimension_continuous)
+
+        if self.weighted_cov:
+            distances = (centered_X**2).sum(axis=-1)
+            distances[distances > 1e-10] = distances[distances > 1e-10] ** -0.25
+
+            # inv sqrt for positives only and half of power for multiplication below
+            distances /= distances.sum(axis=-1)[:, np.newaxis]
+            centered_X = (
+                np.repeat(distances[:, :, np.newaxis] ** 0.5, dimension_continuous, axis=2)
+                * centered_X
+            )
+
+        covs = (
+            self.llambda
+            * np.matmul(np.swapaxes(centered_X, 1, 2), centered_X)
+            / (self.K + 1)
+        )
+
+        # spectral decomposition of all covariances
+        # eigen_values, eigen_vectors = np.linalg.eigh(covs) ## long
+        # eigen_values[eigen_values > 1e-10] = eigen_values[eigen_values > 1e-10] ** .5
+        # As = [eigen_vectors[i].dot(eigen_values[i]) for i in range(len(eigen_values))]
+        As = np.linalg.cholesky(
+            covs + 1e-10 * np.identity(dimension_continuous)
+        )  ## add parameter for 1e-10 ?
+
+        np.random.seed(self.random_state)
+        # sampling all new points
+        # u = np.random.normal(loc=0, scale=1, size=(len(indices), dimension))
+        # new_samples = [mus[central_point] + As[central_point].dot(u[central_point]) for i in indices]
+        indices = np.random.randint(n_minoritaire, size=n_synthetic_sample)
+        new_samples = np.zeros((n_synthetic_sample, dimension_continuous))
+        for i, central_point in enumerate(indices):
+            u = np.random.normal(loc=0, scale=1, size=dimension_continuous)
+            new_observation = mus[central_point, :] + As[central_point].dot(u)
+            new_samples[i, :] = new_observation
+            ############### CATEGORICAL ##################
+        new_samples_cat = np.zeros(
+            (n_synthetic_sample, len(self.categorical_features)), dtype=object
+        )
+        for i in range(n_synthetic_sample):
+            indice = np.random.randint(n_minoritaire)
+            indices_neigh = [
+                0
+            ]  ## the central point is selected for the expectation and covariance matrix
+            indices_neigh.extend(
+                random.sample(range(1, self.K + 1), self.n_points)
+            )  # The nearrest neighbor selected for the estimation
+            indice_neighbors = neighbor_by_index[indice][indices_neigh]
+
+            if (
+                self.version == 1
+            ):  ## the most common occurence is chosen per categorical feature
+                for cat_feature in range(len(self.categorical_features)):
+                    most_common = Counter(
+                        X_positifs_categorical[indice_neighbors, cat_feature]
+                    ).most_common(1)[0][0]
+                    new_samples_cat[i, cat_feature] = most_common
+            elif (
+                self.version == 2
+            ):  ## sampling of one of the nearest neighbors per categorical feature
+                for cat_feature in range(len(self.categorical_features)):
+                    new_samples_cat[i, cat_feature] = np.random.choice(
+                        X_positifs_categorical[indice_neighbors, cat_feature],
+                        replace=False,
+                    )
+            elif (
+                self.version == 3
+            ):  ## sampling of one of the nearest neighbors per categorical feature using dsitance
+                #### We take the nn of the central point. The latter is excluded
+                epsilon_weigths_sampling = 10e-6
+                indice_neighbors_without_0 = np.arange(
+                    start=1, stop=self.K + 1, dtype=int
+                )
+                for cat_feature in range(len(self.categorical_features)):
+                    new_samples_cat[i, cat_feature] = np.random.choice(
+                        X_positifs_categorical[indice_neighbors_without_0, cat_feature],
+                        replace=False,
+                        p=(
+                            (
+                                1
+                                / (
+                                    neighbor_by_dist[indice][indice_neighbors_without_0]
+                                    + epsilon_weigths_sampling
+                                )
+                            )
+                            / (
+                                1
+                                / (
+                                    neighbor_by_dist[indice][indice_neighbors_without_0]
+                                    + epsilon_weigths_sampling
+                                )
+                            ).sum()
+                        ),
+                    )
+            else:
+                raise ValueError(
+                    "Selected version not allowed " "Please chose an existing version"
+                )
+        np.random.seed()
+
+        ##### END ######
+        new_samples_final = np.zeros(
+            (n_synthetic_sample, X_positifs_all_features.shape[1]), dtype=object
+        )
+        new_samples_final[:, bool_mask] = new_samples
+        new_samples_final[:, ~bool_mask] = new_samples_cat
+
+        X_positifs_final = np.zeros(
+            (len(X_positifs), X_positifs_all_features.shape[1]), dtype=object
+        )
+        X_positifs_final[:, bool_mask] = X_positifs
+        X_positifs_final[:, ~bool_mask] = X_positifs_categorical
+
+        X_negatifs_final = np.zeros(
+            (len(X_negatifs), X_positifs_all_features.shape[1]), dtype=object
+        )
+        X_negatifs_final[:, bool_mask] = X_negatifs
+        X_negatifs_final[:, ~bool_mask] = X_negatifs_categorical
+
+        oversampled_X = np.concatenate(
+            (X_negatifs_final, X_positifs_final, new_samples_final), axis=0
+        )
+        oversampled_y = np.hstack(
+            (np.full(len(X_negatifs), 0), np.full((n_final_sample,), 1))
+        )
+
+        return oversampled_X, oversampled_y
+    
+
 class MGS_NC(BaseOverSampler):
     """
     MGS NC strategy
@@ -1172,11 +1422,12 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
         K,
         categorical_features,
         Classifier,
+        weighted_cov=True,
         to_encode=False,
         n_points=None,
         llambda=1.0,
         sampling_strategy="auto",
-        random_state=None,
+        random_state=None
     ):
         """
         llambda is a float.
@@ -1192,6 +1443,7 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
         self.Classifier = Classifier
         self.random_state = random_state
         self.to_encode = to_encode
+        self.weighted_cov = weighted_cov
 
     def _check_X_y(self, X, y):
         """Overwrite the checking to let pass some string for categorical
@@ -1266,42 +1518,61 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
         ######### CONTINUOUS ################
         neigh = NearestNeighbors(n_neighbors=self.K, algorithm="ball_tree")
         neigh.fit(X_positifs)
-        neighbor_by_index = neigh.kneighbors(
+        neighbors_by_index = neigh.kneighbors(
             X=X_positifs, n_neighbors=self.K + 1, return_distance=False
         )
 
         n_synthetic_sample = n_final_sample - n_minoritaire
-        new_samples = np.zeros((n_synthetic_sample, dimension))
-        # new_samples_cat = np.zeros((n_synthetic_sample, len(self.categorical_features)),dtype=object)
-        for i in range(n_synthetic_sample):
-            indice = np.random.randint(n_minoritaire)
-            indices_neigh = [
-                0
-            ]  ## the central point is selected for the expectation and covariance matrix
-            indices_neigh.extend(
-                random.sample(range(1, self.K + 1), self.n_points)
-            )  # The nearrest neighbor selected for the estimation
-            indice_neighbors = neighbor_by_index[indice][indices_neigh]
-            mu = (1 / self.K + 1) * X_positifs[indice_neighbors, :].sum(axis=0)
-            sigma = (
-                self.llambda
-                * (1 / self.n_points)
-                * (X_positifs[indice_neighbors, :] - mu).T.dot(
-                    (X_positifs[indice_neighbors, :] - mu)
-                )
+        # computing mu and covariance at once for every minority class points
+        all_neighbors = X_positifs[neighbors_by_index.flatten()]
+        if self.weighted_cov:
+            # We sample from central point
+            mus = X_positifs
+        else:
+            # We sample from mean of neighbors
+            mus = (1 / (self.K + 1)) * all_neighbors.reshape(
+                len(X_positifs), self.K + 1, dimension
+            ).sum(axis=1)
+        centered_X = X_positifs[neighbors_by_index.flatten()] - np.repeat(
+            mus, self.K + 1, axis=0
+        )
+        centered_X = centered_X.reshape(len(X_positifs), self.K + 1, dimension)
+
+        if self.weighted_cov:
+            distances = (centered_X**2).sum(axis=-1)
+            distances[distances > 1e-10] = distances[distances > 1e-10] ** -0.25
+
+            # inv sqrt for positives only and half of power for multiplication below
+            distances /= distances.sum(axis=-1)[:, np.newaxis]
+            centered_X = (
+                np.repeat(distances[:, :, np.newaxis] ** 0.5, dimension, axis=2)
+                * centered_X
             )
-            new_observation = np.random.multivariate_normal(
-                mu, sigma, check_valid="raise"
-            ).T
+
+        covs = (
+            self.llambda
+            * np.matmul(np.swapaxes(centered_X, 1, 2), centered_X)
+            / (self.K + 1)
+        )
+
+        # spectral decomposition of all covariances
+        # eigen_values, eigen_vectors = np.linalg.eigh(covs) ## long
+        # eigen_values[eigen_values > 1e-10] = eigen_values[eigen_values > 1e-10] ** .5
+        # As = [eigen_vectors[i].dot(eigen_values[i]) for i in range(len(eigen_values))]
+        As = np.linalg.cholesky(
+            covs + 1e-10 * np.identity(dimension)
+        )  ## add parameter for 1e-10 ?
+
+        # sampling all new points
+        # u = np.random.normal(loc=0, scale=1, size=(len(indices), dimension))
+        # new_samples = [mus[central_point] + As[central_point].dot(u[central_point]) for i in indices]
+        indices = np.random.randint(n_minoritaire, size=n_synthetic_sample)
+        new_samples = np.zeros((n_synthetic_sample, dimension))
+        for i, central_point in enumerate(indices):
+            u = np.random.normal(loc=0, scale=1, size=dimension)
+            new_observation = mus[central_point, :] + As[central_point].dot(u)
             new_samples[i, :] = new_observation
         ############### CATEGORICAL ##################
-
-        #    if self.to_encode:
-        #        new_pred= self.Classifier.predict(newdata = new_observation,functional = "mean")
-        #        new_pred = new_pred.mean.ravel()
-        #    else:
-        #        new_pred = self.Classifier.predict(new_observation.reshape(1, -1))
-        #    new_samples_cat[i, :] = new_pred
         if self.to_encode:
             out = self.Classifier.predict(newdata=new_samples, functional="mean")
             new_samples_cat = out.mean
@@ -1369,7 +1640,7 @@ class SMOTE_ENC:
         else:
             raise_isinstance_error(
                 nn_name, [int, KNeighborsMixin], nn_object
-            )  ### A regerder en détail
+            )  ### A regarder en détail
 
     def generate_samples(
         self,
@@ -1485,7 +1756,6 @@ class SMOTE_ENC:
             target_column="target",
             target_value=1,
         )
-        #         X_cat_encoded = np.ravel(np.array(X_cat_encoded))
         X_cat_encoded = np.array(X_cat_encoded)
         y = np.ravel(y)
         X = np.array(X)
@@ -1538,7 +1808,8 @@ class SMOTE_ENC:
         X_cat_encoded = X_cat_encoded * median_std_
 
         X_encoded = np.hstack((X_continuous, X_cat_encoded))
-        X_resampled = X_encoded.copy()
+        #X_resampled = X_encoded.copy() # ABD. In order to have initial data not modified
+        X_resampled  = X_copy.copy()#ABD. In order to have initial data not modified
         y_resampled = y.copy()
 
         for class_sample, n_samples in sampling_strategy.items():
@@ -1560,6 +1831,18 @@ class SMOTE_ENC:
                 continuous_features_,
                 1.0,
             )
+            i = 0 ## ABD. In order to have initial data not modified
+            #print('Inside SMOTE NC X_new : ',X_new) 
+            for col in range(continuous_features_.size, X.shape[1]):
+                encoded_dict = encoded_dict_list[i]
+                i = i + 1
+                for key, value in encoded_dict.items():
+                    X_new[:, col] = np.where(
+                       np.round(X_new[:, col], 4)
+                        == np.round(value * median_std_, 4),
+                        key,
+                        X_new[:, col],
+                    )## END ABD.
 
             if sparse.issparse(X_new):
                 X_resampled = sparse.vstack([X_resampled, X_new])
@@ -1570,17 +1853,19 @@ class SMOTE_ENC:
             y_resampled = np.hstack((y_resampled, y_new))
 
         X_resampled_copy = X_resampled.copy()
-        i = 0
-        for col in range(continuous_features_.size, X.shape[1]):
-            encoded_dict = encoded_dict_list[i]
-            i = i + 1
-            for key, value in encoded_dict.items():
-                X_resampled_copy[:, col] = np.where(
-                    np.round(X_resampled_copy[:, col], 4)
-                    == np.round(value * median_std_, 4),
-                    key,
-                    X_resampled_copy[:, col],
-                )
+        #i = 0 ## ABD. In order to have initial data not modified
+        #print('Inside SMOTE NC X_resampled_copy : ',X_resampled_copy) ## ABD
+        #for col in range(continuous_features_.size, X.shape[1]):
+        #   encoded_dict = encoded_dict_list[i]
+        #   i = i + 1
+        #   for key, value in encoded_dict.items():
+        #        X_resampled_copy[:, col] = np.where(
+        #            np.round(X_resampled_copy[:, col], 4)
+        #            == np.round(value * median_std_, 4),
+        #            key,
+        #            X_resampled_copy[:, col],
+        #        )
+        ## END ABD
 
         for key, value in nan_dict.items():
             for item in value:
@@ -1614,12 +1899,21 @@ class SMOTE_ENC_decoded(SMOTE_ENC):
         ord_encoder = OrdinalEncoder(
             handle_unknown="use_encoded_value", unknown_value=-1, dtype=int
         )
-        X[:, self.categorical_features] = ord_encoder.fit_transform(
-            X[:, self.categorical_features]
+        X_copy = X.copy()
+        X_copy[:, self.categorical_features] = ord_encoder.fit_transform(
+            X_copy[:, self.categorical_features]
         )
+        print('X after encoding : ',X_copy)
+        print('X shape after encoding : ',X_copy.shape)
         ### Sampling :
-        X_res, y_res = super().fit_resample(X, y)
+        X_res, y_res = super().fit_resample(X_copy, y)
+        print('X_res after sampling : ',X_res)
+        print('X_res shape after encoding : ',X_res.shape)
+        print('X_rescategorical  shape after encoding : ',X_res[:, self.categorical_features])
+        #print('Dtype :',X_res.dtype)
+        X_res =  X_res.astype(str)
+        #print('Dtype after str :',type(X_res))
         X_res[:, self.categorical_features] = ord_encoder.inverse_transform(
-            X_res[:, self.categorical_features].astype(int)
+            X_res[:, self.categorical_features].astype(float)
         )
         return X_res, y_res
