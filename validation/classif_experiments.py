@@ -199,6 +199,7 @@ def run_eval(
     # subsample_seeds=[11, 9, 5],
     to_standard_scale=True,
     categorical_features=None,
+    to_fit_on_all_and_pred_on_continuous=False
 ):
     """
     Main function of the procol.
@@ -227,6 +228,7 @@ def run_eval(
     X_copy, y_copy = X.copy(), y.copy()
 
     folds = list(splitter.split(X_copy, y_copy))
+    bool_mask[categorical_features] = False
     ##############################################
     ######## Start protocol by strategy    #######
     ##############################################
@@ -255,32 +257,36 @@ def run_eval(
                 X=X_train, y=y_train, **oversampling_params
             )
             ######### Run of the given fold ###############
-
-            # Is shuffling useful within a fold isn't integrated in RF model ?
             X_res, y_res = shuffle(
                 X_res, y_res, random_state=0
-            )  # to put in oversampling_func
+            )  # to put in oversampling_func. Note necessary
             model.fit(X_res, y_res)
             forest = hasattr(model, "estimators_") and hasattr(
                 model.estimators_[0], "get_depth"
             )
-            if forest:
+            if forest: # If the classifier is a forest, the tree depths of the forst are saved
                 curent_tree_depth = [
                     estimator.get_depth() for estimator in model.estimators_
                 ]
                 list_tree_depth.append(curent_tree_depth)
                 list_tree_depth_name.append(oversampling_name)
 
-            if to_standard_scale:
-                if categorical_features is None:
+            if to_standard_scale: ## We chacjk if we need to tranform the test set
+                if categorical_features is None: # Case without categorical features
                     X_test = scaler.transform(X_test)
-                else:
+                else: # case with categorical features. We only scale the conyinuous ones
                     bool_mask = np.ones((X_test.shape[1]), dtype=bool)
                     bool_mask[categorical_features] = False
                     X_test[:, bool_mask] = scaler.transform(
                         X_test[:, bool_mask]
                     )  ## continuous features only
-            y_pred_probas = model.predict_proba(X_test)[:, 1]
+                    
+            if to_fit_on_all_and_pred_on_continuous : # In this case, the oversampling strategy takes
+                # all features in input but retruns only the continuous ones.
+                # This means that the fit is done on the continuous one. So our test has to be on the continuous features only.
+                y_pred_probas = model.predict_proba(X_test[:,bool_mask])[:, 1]
+            else:
+                y_pred_probas = model.predict_proba(X_test)[:, 1]
 
             ######## Results are saved ###################
             list_all_preds[i + 1].extend(y_pred_probas)
