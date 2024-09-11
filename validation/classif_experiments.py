@@ -228,6 +228,8 @@ def run_eval(
     X_copy, y_copy = X.copy(), y.copy()
 
     folds = list(splitter.split(X_copy, y_copy))
+
+    bool_mask = np.ones((X_copy.shape[1]), dtype=bool)
     bool_mask[categorical_features] = False
     ##############################################
     ######## Start protocol by strategy    #######
@@ -280,7 +282,7 @@ def run_eval(
                     X_test[:, bool_mask] = scaler.transform(
                         X_test[:, bool_mask]
                     )  ## continuous features only
-                    
+
             if to_fit_on_all_and_pred_on_continuous : # In this case, the oversampling strategy takes
                 # all features in input but retruns only the continuous ones.
                 # This means that the fit is done on the continuous one. So our test has to be on the continuous features only.
