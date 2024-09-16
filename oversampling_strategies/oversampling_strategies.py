@@ -991,6 +991,173 @@ class WMGS_NC_cont(BaseOverSampler):
         return oversampled_X, oversampled_y
     
 
+
+class WMGS_encode(BaseOverSampler):
+    """
+    MGS NC strategy
+    """
+
+    def __init__(
+        self,
+        K,
+        categorical_features,
+        weighted_cov=True,
+        n_points=None,
+        llambda=1.0,
+        sampling_strategy="auto",
+        random_state=None,
+        bool_encoding=None,
+        categorical_features_one_hot=None
+    ):
+        """
+        llambda is a float.
+        """
+        super().__init__(sampling_strategy=sampling_strategy)
+        self.K = K
+        self.llambda = llambda
+        if n_points is None:
+            self.n_points = K
+        else:
+            self.n_points = n_points
+        self.categorical_features = categorical_features
+        self.weighted_cov = weighted_cov
+        self.random_state = random_state
+        self.bool_encoding=bool_encoding # kind of encoding already applied to the data
+        self.categorical_features_one_hot=categorical_features_one_hot
+
+    def _check_X_y(self, X, y):
+        """Overwrite the checking to let pass some string for categorical
+        features.
+        """
+        y, binarize_y = check_target_type(y, indicate_one_vs_all=True)
+        # X = _check_X(X)
+        # self._check_n_features(X, reset=True)
+        # self._check_feature_names(X, reset=True)
+        return X, y, binarize_y
+
+    def _validate_estimator(self):
+        super()._validate_estimator()
+        if self.categorical_features_.size == 0:
+            raise ValueError(
+                "MGS-NC is not designed to work only with numerical "
+                "features. It requires some categorical features."
+            )
+
+    def _fit_resample(self, X, y=None, n_final_sample=None):
+        """
+        if y=None, all points are considered positive, and oversampling on all X
+        if n_final_sample=None, objective is balanced data.
+        """
+
+        if y is None:
+            X_positifs = X
+            X_negatifs = np.ones((0, X.shape[1]))
+            assert (
+                n_final_sample is not None
+            ), "You need to provide a number of final samples."
+        else:
+            X_positifs = X[y == 1]
+            X_negatifs = X[y == 0]
+            if n_final_sample is None:
+                n_final_sample = (y == 0).sum()
+
+        if len(self.categorical_features) == X.shape[1]:
+            raise ValueError(
+                "MGS-NC is not designed to work only with categorical "
+                "features. It requires some numerical features."
+            )
+
+        n_minoritaire = X_positifs.shape[0]
+        dimension_continuous = X_positifs.shape[1]  ## of continuous features
+
+        neigh = NearestNeighbors(n_neighbors=self.K, algorithm="ball_tree")
+        neigh.fit(X_positifs)
+        neighbor_by_dist, neighbor_by_index = neigh.kneighbors(
+            X=X_positifs, n_neighbors=self.K + 1, return_distance=True
+        )
+
+        n_synthetic_sample = n_final_sample - n_minoritaire
+        # computing mu and covariance at once for every minority class points
+        all_neighbors = X_positifs[neighbor_by_index.flatten()]
+        if self.weighted_cov:
+            # We sample from central point
+            mus = X_positifs
+        else:
+            # We sample from mean of neighbors
+            mus = (1 / (self.K + 1)) * all_neighbors.reshape(
+                len(X_positifs), self.K + 1, dimension_continuous
+            ).sum(axis=1)
+        centered_X = X_positifs[neighbor_by_index.flatten()] - np.repeat(
+            mus, self.K + 1, axis=0
+        )
+        centered_X = centered_X.reshape(len(X_positifs), self.K + 1, dimension_continuous)
+
+        if self.weighted_cov:
+            distances = (centered_X**2).sum(axis=-1)
+            distances[distances > 1e-10] = distances[distances > 1e-10] ** -0.25
+
+            # inv sqrt for positives only and half of power for multiplication below
+            distances /= distances.sum(axis=-1)[:, np.newaxis]
+            centered_X = (
+                np.repeat(distances[:, :, np.newaxis] ** 0.5, dimension_continuous, axis=2)
+                * centered_X
+            )
+
+        covs = (
+            self.llambda
+            * np.matmul(np.swapaxes(centered_X, 1, 2), centered_X)
+            / (self.K + 1)
+        )
+
+        # spectral decomposition of all covariances
+        # eigen_values, eigen_vectors = np.linalg.eigh(covs) ## long
+        # eigen_values[eigen_values > 1e-10] = eigen_values[eigen_values > 1e-10] ** .5
+        # As = [eigen_vectors[i].dot(eigen_values[i]) for i in range(len(eigen_values))]
+        As = np.linalg.cholesky(
+            covs + 1e-10 * np.identity(dimension_continuous)
+        )  ## add parameter for 1e-10 ?
+
+        np.random.seed(self.random_state)
+        # sampling all new points
+        # u = np.random.normal(loc=0, scale=1, size=(len(indices), dimension))
+        # new_samples = [mus[central_point] + As[central_point].dot(u[central_point]) for i in indices]
+        indices = np.random.randint(n_minoritaire, size=n_synthetic_sample)
+        new_samples = np.zeros((n_synthetic_sample, dimension_continuous))
+        for i, central_point in enumerate(indices):
+            u = np.random.normal(loc=0, scale=1, size=dimension_continuous)
+            new_observation = mus[central_point, :] + As[central_point].dot(u)
+            if self.bool_encoding is None:
+                new_samples[i, :] = new_observation
+            elif self.bool_encoding=="one-hot":
+                if self.categorical_features_one_hot is None : ## categorical_features_one_hot is a list of indexes of the modalities of categorical features
+                    raise ValueError("No value set to categorical_features_one_hot")
+                else:
+                    for cols in self.categorical_features_one_hot:
+                        argmaxes = np.argmax(new_observation[cols])
+                        new_observation[cols] = np.zeros((len(cols),))
+                        curr_cols = new_observation[cols]
+                        curr_cols[argmaxes] = 1 ## argamx done on clos subset so we have to appky the argmax on new_observation[cols]
+                        new_observation[cols] = curr_cols
+                        new_samples[i, :] = new_observation 
+            elif self.bool_encoding=="ordinal":
+                new_observation[self.categorical_features] = np.rint(new_observation[self.categorical_features])
+                new_samples[i, :] = new_observation 
+            else:
+                raise ValueError(
+                    "Encoding not in list"
+                    )
+                
+            
+        np.random.seed()
+
+        ##### END ######
+        oversampled_X = np.concatenate((X_negatifs, X_positifs, new_samples), axis=0)
+        oversampled_y = np.hstack(
+            (np.full(len(X_negatifs), 0), np.full((n_final_sample,), 1))
+        )
+        return oversampled_X, oversampled_y
+    
+
 class MGS_NC(BaseOverSampler):
     """
     MGS NC strategy
