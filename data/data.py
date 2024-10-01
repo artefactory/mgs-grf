@@ -653,3 +653,25 @@ def load_covertype_data(dict_mapping={1:0,4:1}): #{1:0, 2: 0, 3:0, 4:0, 5:0, 6:0
         return X,y
     else: 
         return X.to_numpy(),original_y.to_numpy().ravel()
+    
+
+############ SYNTHETIC #########
+
+def generate_initial_data_onecat(dimension,n_samples,random_state=24):
+    np.random.seed(random_state)
+    X_unif_informative = np.random.uniform(low=0,high=1,size=(n_samples,3))
+    if dimension-4 !=0:
+        X_unif_non_informative = np.random.uniform(low=0,high=1,size=(n_samples,dimension-4))
+        Xf = np.hstack((X_unif_informative,X_unif_non_informative))
+    else :
+        Xf = X_unif_informative
+        
+    ### Feature categorical
+    feature_cat_uniform, feature_cat_uniform_numeric = generate_synthetic_features_logreg(X=Xf,
+                                                                                      index_informatives=[0,1,2],
+                                                                                      list_modalities=['C','D'])
+    print('Composition of categorical feature : ', Counter(feature_cat_uniform))
+    X_final = np.hstack((Xf,feature_cat_uniform_numeric.reshape(-1,1)))
+    target, target_numeric = generate_synthetic_features_logreg(X=X_final,index_informatives=[0,1,2,-1],list_modalities=['No','Yes'],beta=[4,-3,-3,3])
+    print('composition of the target ', Counter(target))
+    return X_final, target, target_numeric
