@@ -1,6 +1,7 @@
 import os
 
 import pandas as pd
+import numpy as np
 from scipy.io.arff import loadarff
 
 DATA_DIR = os.path.join(
