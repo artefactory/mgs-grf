@@ -657,6 +657,38 @@ def load_covertype_data(dict_mapping={1:0,4:1}): #{1:0, 2: 0, 3:0, 4:0, 5:0, 6:0
     
 
 ############ SYNTHETIC #########
+    
+def my_log_reg(x,beta=np.array([-8,7,6])): 
+    #beta = np.array([-8,7,6])
+    intercept = -2
+    tmp = x.dot(beta)
+    z = tmp + intercept # add intercept
+    res = np.exp(z) / (1 + np.exp(z))
+    return  res
+
+def proba_to_label(y_pred_probas, treshold=0.5):  # apply_threshold ?
+    return np.array(np.array(y_pred_probas) >= treshold, dtype=int)
+
+def generate_synthetic_features_logreg(X,index_informatives,list_modalities=['A','B'],beta=np.array([-8,7,6])):
+    res_log_reg = my_log_reg(X[:,index_informatives],beta=beta)
+    pred_logreg = proba_to_label(y_pred_probas=res_log_reg, treshold=0.5)
+    
+    array_final = np.char.replace(pred_logreg.astype(str), '0',list_modalities[0])
+    array_final = np.char.replace(array_final.astype(str), '1',list_modalities[1])
+    return array_final, pred_logreg
+
+def generate_synthetic_features_logreg_triple(X,index_informatives,list_modalities=['A','B','C']):
+    res_log_reg1 = my_log_reg(X[:,index_informatives],beta=np.array([-8,7,6]))
+    res_log_reg2 = my_log_reg(X[:,index_informatives],beta=np.array([8,-7,6]))
+    res_log_reg3 = my_log_reg(X[:,index_informatives],beta=np.array([8,7,-6]))
+    res_log_reg = np.hstack((res_log_reg1.reshape(-1,1),res_log_reg2.reshape(-1,1),res_log_reg3.reshape(-1,1)))
+    array_argmax = np.argmax(res_log_reg,axis=1)
+
+    array_final = np.char.replace(array_argmax.astype(str), '0',list_modalities[0])
+    array_final = np.char.replace(array_final.astype(str), '1',list_modalities[1])
+    array_final = np.char.replace(array_final.astype(str), '2',list_modalities[2])
+    return array_final,array_argmax
+
 
 def generate_initial_data_onecat(dimension,n_samples,random_state=24):
     np.random.seed(random_state)
