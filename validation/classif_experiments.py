@@ -465,7 +465,7 @@ class PaperTimeSeriesSplit(TimeSeriesSplit):
         return folds_from_starting_split
     
 
-def compute_metrics_cotraining(output_dir_continuous,output_dir_categorical, name_file_continuous,name_file_categorical, list_metric):
+def compute_metrics_cotraining(output_dir_continuous,output_dir_categorical, name_file_continuous,name_file_categorical, list_metric,n_fold=5):
     """_summary_
 
     Parameters
@@ -502,7 +502,7 @@ def compute_metrics_cotraining(output_dir_continuous,output_dir_categorical, nam
         for col_number, col_name in enumerate(name_col_strategies):
             ### Mean of the metrics on the 5 test folds:
             list_value = []
-            for j in range(5):
+            for j in range(n_fold):
                 df = df_all[df_all["fold"] == j]
                 y_true = df["y_true"].tolist()
                 pred_probas_all = df[col_name].tolist()
@@ -529,7 +529,7 @@ def compute_metrics_cotraining(output_dir_continuous,output_dir_categorical, nam
     return df_mean_metric, df_std_metric
 
 def compute_metrics_several_protocols_cotraining(
-    output_dir_continuous,output_dir_categorical, init_name_file_continuous,init_name_file_categorical, list_metric, bool_roc_auc_only=True, n_iter=100
+    output_dir_continuous,output_dir_categorical, init_name_file_continuous,init_name_file_categorical, list_metric, bool_roc_auc_only=True, n_iter=100,n_fold=5
 ):
     """_summary_
 
@@ -563,7 +563,7 @@ def compute_metrics_several_protocols_cotraining(
                 output_dir_categorical=output_dir_categorical,
                 name_file_continuous=name_file_continuous,
                 name_file_categorical=name_file_categorical,
-                list_metric=[(roc_auc_score, "roc_auc", "proba")],
+                list_metric=[(roc_auc_score, "roc_auc", "proba")],n_fold=n_fold
             )
             list_res.append(df_metrics_mean.to_numpy())
 
