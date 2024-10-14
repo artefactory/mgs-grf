@@ -198,6 +198,7 @@ def run_eval(
     # subsample_ratios=[0.2, 0.1, 0.01],
     # subsample_seeds=[11, 9, 5],
     to_standard_scale=True,
+    give_scaler=False,
     categorical_features=None,
     to_fit_on_all_and_pred_on_continuous=False
 ):
@@ -255,9 +256,14 @@ def run_eval(
                         X_train[:, bool_mask]
                     )  ## continuous features only
 
-            X_res, y_res = oversampling_func.fit_resample(
-                X=X_train, y=y_train, **oversampling_params
-            )
+            if give_scaler: # we give the current scaler to the oversampling strategy
+                X_res, y_res = oversampling_func.fit_resample(
+                    X=X_train, y=y_train,scaler=scaler, **oversampling_params
+                )
+            else :
+                X_res, y_res = oversampling_func.fit_resample(
+                    X=X_train, y=y_train, **oversampling_params
+                )
             ######### Run of the given fold ###############
             X_res, y_res = shuffle(
                 X_res, y_res, random_state=0
@@ -310,7 +316,7 @@ def run_eval(
     )
 
 
-def compute_metrics(output_dir, name_file, list_metric):
+def compute_metrics(output_dir, name_file, list_metric,n_fold=5):
     """_summary_
 
     Parameters
@@ -346,7 +352,7 @@ def compute_metrics(output_dir, name_file, list_metric):
         for col_number, col_name in enumerate(name_col_strategies):
             ### Mean of the metrics on the 5 test folds:
             list_value = []
-            for j in range(5):
+            for j in range(n_fold):
                 df = df_all[df_all["fold"] == j]
                 y_true = df["y_true"].tolist()
                 pred_probas_all = df[col_name].tolist()
@@ -374,7 +380,7 @@ def compute_metrics(output_dir, name_file, list_metric):
 
 
 def compute_metrics_several_protocols(
-    output_dir, init_name_file, list_metric, bool_roc_auc_only=True, n_iter=100
+    output_dir, init_name_file, list_metric, std_by_fold=True,bool_roc_auc_only=True, n_iter=100,n_fold=5
 ):
     """_summary_
 
@@ -405,7 +411,7 @@ def compute_metrics_several_protocols(
             df_metrics_mean, df_metrics_std = compute_metrics(
                 output_dir=output_dir,
                 name_file=name_file,
-                list_metric=[(roc_auc_score, "roc_auc", "proba")],
+                list_metric=[(roc_auc_score, "roc_auc", "proba")],n_fold=n_fold
             )
             list_res.append(df_metrics_mean.to_numpy())
 
@@ -425,7 +431,7 @@ def compute_metrics_several_protocols(
         for i in range(n_iter):
             name_file = init_name_file + str(i) + ".npy"
             df_metrics_mean, df_metrics_std = compute_metrics(
-                output_dir=output_dir, name_file=name_file, list_metric=list_metric
+                output_dir=output_dir, name_file=name_file, list_metric=list_metric,n_fold=n_fold
             )
 
             list_res.append(df_metrics_mean.to_numpy())

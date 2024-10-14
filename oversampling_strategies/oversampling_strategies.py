@@ -181,7 +181,7 @@ class MGS2(BaseOverSampler):
     def __init__(
         self,
         K,
-        llambda,
+        llambda=1.0,
         sampling_strategy="auto",
         random_state=None,
         weighted_cov=False,
@@ -719,6 +719,332 @@ class WMGS_NC(BaseOverSampler):
         As = np.linalg.cholesky(
             covs + 1e-10 * np.identity(dimension_continuous)
         )  ## add parameter for 1e-10 ?
+
+        np.random.seed(self.random_state)
+        # sampling all new points
+        # u = np.random.normal(loc=0, scale=1, size=(len(indices), dimension))
+        # new_samples = [mus[central_point] + As[central_point].dot(u[central_point]) for i in indices]
+        indices = np.random.randint(n_minoritaire, size=n_synthetic_sample)
+        new_samples = np.zeros((n_synthetic_sample, dimension_continuous))
+        for i, central_point in enumerate(indices):
+            u = np.random.normal(loc=0, scale=1, size=dimension_continuous)
+            new_observation = mus[central_point, :] + As[central_point].dot(u)
+            new_samples[i, :] = new_observation
+            ############### CATEGORICAL ##################
+        new_samples_cat = np.zeros(
+            (n_synthetic_sample, len(self.categorical_features)), dtype=object
+        )
+        for i in range(n_synthetic_sample):
+            indice = np.random.randint(n_minoritaire)
+            indices_neigh = [
+                0
+            ]  ## the central point is selected for the expectation and covariance matrix
+            indices_neigh.extend(
+                random.sample(range(1, self.K + 1), self.n_points)
+            )  # The nearrest neighbor selected for the estimation
+            indice_neighbors = neighbor_by_index[indice][indices_neigh]
+
+            if (
+                self.version == 1
+            ):  ## the most common occurence is chosen per categorical feature
+                for cat_feature in range(len(self.categorical_features)):
+                    most_common = Counter(
+                        X_positifs_categorical[indice_neighbors, cat_feature]
+                    ).most_common(1)[0][0]
+                    new_samples_cat[i, cat_feature] = most_common
+            elif (
+                self.version == 2
+            ):  ## sampling of one of the nearest neighbors per categorical feature
+                for cat_feature in range(len(self.categorical_features)):
+                    new_samples_cat[i, cat_feature] = np.random.choice(
+                        X_positifs_categorical[indice_neighbors, cat_feature],
+                        replace=False,
+                    )
+            elif (
+                self.version == 3
+            ):  ## sampling of one of the nearest neighbors per categorical feature using dsitance
+                #### We take the nn of the central point. The latter is excluded
+                epsilon_weigths_sampling = 10e-6
+                indice_neighbors_without_0 = np.arange(
+                    start=1, stop=self.K + 1, dtype=int
+                )
+                for cat_feature in range(len(self.categorical_features)):
+                    new_samples_cat[i, cat_feature] = np.random.choice(
+                        X_positifs_categorical[indice_neighbors_without_0, cat_feature],
+                        replace=False,
+                        p=(
+                            (
+                                1
+                                / (
+                                    neighbor_by_dist[indice][indice_neighbors_without_0]
+                                    + epsilon_weigths_sampling
+                                )
+                            )
+                            / (
+                                1
+                                / (
+                                    neighbor_by_dist[indice][indice_neighbors_without_0]
+                                    + epsilon_weigths_sampling
+                                )
+                            ).sum()
+                        ),
+                    )
+            else:
+                raise ValueError(
+                    "Selected version not allowed " "Please chose an existing version"
+                )
+        np.random.seed()
+
+        ##### END ######
+        new_samples_final = np.zeros(
+            (n_synthetic_sample, X_positifs_all_features.shape[1]), dtype=object
+        )
+        new_samples_final[:, bool_mask] = new_samples
+        new_samples_final[:, ~bool_mask] = new_samples_cat
+
+        X_positifs_final = np.zeros(
+            (len(X_positifs), X_positifs_all_features.shape[1]), dtype=object
+        )
+        X_positifs_final[:, bool_mask] = X_positifs
+        X_positifs_final[:, ~bool_mask] = X_positifs_categorical
+
+        X_negatifs_final = np.zeros(
+            (len(X_negatifs), X_positifs_all_features.shape[1]), dtype=object
+        )
+        X_negatifs_final[:, bool_mask] = X_negatifs
+        X_negatifs_final[:, ~bool_mask] = X_negatifs_categorical
+
+        oversampled_X = np.concatenate(
+            (X_negatifs_final, X_positifs_final, new_samples_final), axis=0
+        )
+        oversampled_y = np.hstack(
+            (np.full(len(X_negatifs), 0), np.full((n_final_sample,), 1))
+        )
+
+        return oversampled_X, oversampled_y
+
+
+class WMGS_NC_cov(BaseOverSampler):
+    """
+    MGS NC strategy
+    """
+
+    def __init__(
+        self,
+        K,
+        categorical_features,
+        version,
+        weighted_cov=True,
+        ledoitwolfcov = False,
+        oascov=False,
+        tracecov=False,
+        idcov=False,
+        idcov2=False,
+        expcov=False,
+        n_points=None,
+        llambda=1.0,
+        sampling_strategy="auto",
+        random_state=None,
+    ):
+        """
+        llambda is a float.
+        """
+        super().__init__(sampling_strategy=sampling_strategy)
+        self.K = K
+        self.llambda = llambda
+        if n_points is None:
+            self.n_points = K
+        else:
+            self.n_points = n_points
+        self.categorical_features = categorical_features
+        self.version = version
+        self.weighted_cov = weighted_cov
+        self.ledoitwolfcov=ledoitwolfcov
+        self.oascov=oascov
+        self.tracecov=tracecov
+        self.idcov=idcov
+        self.idcov2=idcov2
+        self.expcov=expcov
+        self.random_state = random_state
+
+    def _check_X_y(self, X, y):
+        """Overwrite the checking to let pass some string for categorical
+        features.
+        """
+        y, binarize_y = check_target_type(y, indicate_one_vs_all=True)
+        # X = _check_X(X)
+        # self._check_n_features(X, reset=True)
+        # self._check_feature_names(X, reset=True)
+        return X, y, binarize_y
+
+    def _validate_estimator(self):
+        super()._validate_estimator()
+        if self.categorical_features_.size == 0:
+            raise ValueError(
+                "MGS-NC is not designed to work only with numerical "
+                "features. It requires some categorical features."
+            )
+
+    def _fit_resample(self, X, y=None, n_final_sample=None):
+        """
+        if y=None, all points are considered positive, and oversampling on all X
+        if n_final_sample=None, objective is balanced data.
+        """
+
+        if y is None:
+            X_positifs = X
+            X_negatifs = np.ones((0, X.shape[1]))
+            assert (
+                n_final_sample is not None
+            ), "You need to provide a number of final samples."
+        else:
+            X_positifs = X[y == 1]
+            X_negatifs = X[y == 0]
+            if n_final_sample is None:
+                n_final_sample = (y == 0).sum()
+
+        if len(self.categorical_features) == X.shape[1]:
+            raise ValueError(
+                "MGS-NC is not designed to work only with categorical "
+                "features. It requires some numerical features."
+            )
+
+        bool_mask = np.ones((X_positifs.shape[1]), dtype=bool)
+        bool_mask[self.categorical_features] = False
+        X_positifs_all_features = X_positifs.copy()
+        X_negatifs_all_features = X_negatifs.copy()
+        X_positifs = X_positifs_all_features[:, bool_mask]  ## continuous features
+        X_negatifs = X_negatifs_all_features[:, bool_mask]  ## continuous features
+        X_positifs_categorical = X_positifs_all_features[:, ~bool_mask]
+        X_negatifs_categorical = X_negatifs_all_features[:, ~bool_mask]
+        X_positifs = X_positifs.astype(float)
+
+        n_minoritaire = X_positifs.shape[0]
+        dimension_continuous = X_positifs.shape[1]  ## of continuous features
+
+        enc = OneHotEncoder(handle_unknown="ignore")  ## encoding
+        X_positifs_categorical_enc = enc.fit_transform(
+            X_positifs_categorical
+        ).toarray()
+        X_positifs_all_features_enc = np.hstack((X_positifs,X_positifs_categorical_enc))
+        cste_med = np.median(
+            np.sqrt(np.var(X_positifs, axis=0))
+        )  ## med constante from continuous variables
+        if not math.isclose(cste_med, 0):
+            X_positifs_all_features_enc[:, dimension_continuous:] = cste_med / np.sqrt(
+                2
+            )  # With one-hot encoding, the median will be repeated twice. We need
+        # to divide by sqrt(2) such that we only have one median value
+        # contributing to the Euclidean distance
+        neigh = NearestNeighbors(n_neighbors=self.K, algorithm="ball_tree")
+        neigh.fit(X_positifs_all_features_enc)
+        neighbor_by_dist, neighbor_by_index = neigh.kneighbors(
+            X=X_positifs_all_features_enc, n_neighbors=self.K + 1, return_distance=True
+        )
+
+        n_synthetic_sample = n_final_sample - n_minoritaire
+        if self.ledoitwolfcov:
+            # We sample from central point
+            mus = X_positifs
+            As = []
+            for i in range(n_minoritaire):
+                covariance, shrinkage = ledoit_wolf(X_positifs[neighbor_by_index[i,1:],:]-mus[neighbor_by_index[i,0]],assume_centered=True)
+                As.append(covariance)
+            As= np.array(As)   
+        
+        elif self.oascov:
+            # We sample from central point
+            mus = X_positifs
+            As = []
+            for i in range(n_minoritaire):
+                covariance, shrinkage = oas(X_positifs[neighbor_by_index[i,1:],:]-mus[neighbor_by_index[i,0]],assume_centered=True)
+                As.append(covariance)
+            As= np.array(As) 
+        elif self.tracecov:
+            # We sample from central point
+            mus = X_positifs
+            As = []
+            p = X_positifs.shape[1]
+            for i in range(n_minoritaire):
+                covariance  = empirical_covariance(X_positifs[neighbor_by_index[i,1:],:]-mus[neighbor_by_index[i,0]],assume_centered=True)
+                final_covariance = (np.trace(covariance)/p) * np.eye(p)
+                As.append(final_covariance) 
+            As= np.array(As) 
+        elif self.idcov:
+            # We sample from mean of neighbors
+            all_neighbors = X_positifs[neighbor_by_index.flatten()]
+            mus = (1 / (self.K + 1)) * all_neighbors.reshape(
+                len(X_positifs), self.K + 1, dimension_continuous
+                ).sum(axis=1)
+            As = []
+            p = X_positifs.shape[1]
+            for i in range(n_minoritaire):
+                final_covariance = (1/p) * np.eye(p)
+                As.append(final_covariance) 
+            As= np.array(As) 
+        elif self.idcov2:
+            # We sample from central point
+            mus = X_positifs
+            As = []
+            p = X_positifs.shape[1]
+            for i in range(n_minoritaire):
+                final_covariance = (1/p) * np.eye(p)
+                As.append(final_covariance) 
+            As= np.array(As) 
+        elif self.expcov:
+            # We sample from central point
+            mus = X_positifs
+            As = []
+            p = X_positifs.shape[1]
+            for i in range(n_minoritaire):
+                diffs = X_positifs[neighbor_by_index[i,1:],:]-mus[neighbor_by_index[i,0]]
+                exp_dist = np.exp(-np.linalg.norm(diffs, axis=1))
+                weights = exp_dist / (np.sum(exp_dist))
+                final_covariance = (diffs.T.dot(np.diag(weights)).dot(diffs)) + np.eye(dimension_continuous) * 1e-10
+                As.append(final_covariance) 
+            As= np.array(As) 
+            
+
+        else:
+            # computing mu and covariance at once for every minority class points
+            all_neighbors = X_positifs[neighbor_by_index.flatten()]
+            if self.weighted_cov:
+                # We sample from central point
+                mus = X_positifs
+            else:
+                # We sample from mean of neighbors
+                mus = (1 / (self.K + 1)) * all_neighbors.reshape(
+                    len(X_positifs), self.K + 1, dimension_continuous
+                ).sum(axis=1)
+            centered_X = X_positifs[neighbor_by_index.flatten()] - np.repeat(
+                mus, self.K + 1, axis=0
+            )
+            centered_X = centered_X.reshape(len(X_positifs), self.K + 1, dimension_continuous)
+
+            if self.weighted_cov:
+                distances = (centered_X**2).sum(axis=-1)
+                distances[distances > 1e-10] = distances[distances > 1e-10] ** -0.25
+
+                # inv sqrt for positives only and half of power for multiplication below
+                distances /= distances.sum(axis=-1)[:, np.newaxis]
+                centered_X = (
+                    np.repeat(distances[:, :, np.newaxis] ** 0.5, dimension_continuous, axis=2)
+                    * centered_X
+                )
+
+            covs = (
+                self.llambda
+                * np.matmul(np.swapaxes(centered_X, 1, 2), centered_X)
+                / (self.K + 1)
+            )
+
+            # spectral decomposition of all covariances
+            # eigen_values, eigen_vectors = np.linalg.eigh(covs) ## long
+            # eigen_values[eigen_values > 1e-10] = eigen_values[eigen_values > 1e-10] ** .5
+            # As = [eigen_vectors[i].dot(eigen_values[i]) for i in range(len(eigen_values))]
+            As = np.linalg.cholesky(
+                covs + 1e-10 * np.identity(dimension_continuous)
+            )  ## add parameter for 1e-10 ?
 
         np.random.seed(self.random_state)
         # sampling all new points
@@ -1746,7 +2072,25 @@ class SMOTE_cat(BaseOverSampler):
 
         return oversampled_X, oversampled_y
 
+def proba_to_label(y_pred_probas, treshold=0.5):  # apply_threshold ?
+    """_summary_
 
+    Parameters
+    ----------
+    y_pred_probas : _type_
+        _description_
+    treshold : float, optional
+        _description_, by default 0.5
+
+    Returns
+    -------
+    _type_
+        _description_
+    """
+    # Personnally I would do it in NumPy:
+    return np.array(np.array(y_pred_probas) >= treshold, dtype=int)
+
+from sklearn.covariance import ledoit_wolf,oas,empirical_covariance
 class MultiOutPutClassifier_and_MGS(BaseOverSampler):
     """
     MultiOutPutClassifier and MGS
@@ -1757,7 +2101,13 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
         K,
         categorical_features,
         Classifier,
-        weighted_cov=True,
+        weighted_cov=False,
+        ledoitwolfcov = False,
+        oascov=False,
+        tracecov=False,
+        idcov=False,
+        idcov2=False,
+        expcov=False,
         to_encode=False,
         n_points=None,
         llambda=1.0,
@@ -1780,7 +2130,313 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
         self.random_state = random_state
         self.to_encode = to_encode
         self.weighted_cov = weighted_cov
+        self.ledoitwolfcov=ledoitwolfcov
+        self.oascov=oascov
+        self.tracecov=tracecov
+        self.idcov=idcov
+        self.idcov2=idcov2
+        self.expcov=expcov
         self.bool_drf=bool_drf
+        
+
+    def _check_X_y(self, X, y):
+        """Overwrite the checking to let pass some string for categorical
+        features.
+        """
+        y, binarize_y = check_target_type(y, indicate_one_vs_all=True)
+        # X = _check_X(X)
+        # self._check_n_features(X, reset=True)
+        # self._check_feature_names(X, reset=True)
+        return X, y, binarize_y
+
+    def _validate_estimator(self):
+        super()._validate_estimator()
+        if self.categorical_features_.size == 0:
+            raise ValueError(
+                "MultiOutPutClassifier_and_MGS is not designed to work only with numerical "
+                "features. It requires some categorical features."
+            )
+
+    def fit_resample(self, X, y,scaler=None):  # Necessary only for SemiOracle
+        """Resample the dataset.
+
+        Parameters
+        ----------
+        X : {array-like, dataframe, sparse matrix} of shape \
+                (n_samples, n_features)
+            Matrix containing the data which have to be sampled.
+
+        y : array-like of shape (n_samples,)
+            Corresponding label for each sample in X.
+
+        Returns
+        -------
+        X_resampled : {array-like, dataframe, sparse matrix} of shape \
+                (n_samples_new, n_features)
+            The array containing the resampled data.
+
+        y_resampled : array-like of shape (n_samples_new,)
+            The corresponding label of `X_resampled`.
+        """
+
+        if scaler is None:
+            output = self._fit_resample(X, y)
+        else:
+            output = self._fit_resample(X, y,scaler=scaler)
+
+        X_,y_=output[0],output[1]
+        return (X_, y_) if len(output) == 2 else (X_, y_, output[2])
+
+    def _fit_resample(self, X, y=None,scaler=None, n_final_sample=None):
+        """
+        if y=None, all points are considered positive, and oversampling on all X
+        if n_final_sample=None, objective is balanced data.
+        """
+
+        if y is None:
+            X_positifs = X
+            X_negatifs = np.ones((0, X.shape[1]))
+            assert (
+                n_final_sample is not None
+            ), "You need to provide a number of final samples."
+        else:
+            X_positifs = X[y == 1]
+            X_negatifs = X[y == 0]
+            if n_final_sample is None:
+                n_final_sample = (y == 0).sum()
+        if len(self.categorical_features) == X.shape[1]:
+            raise ValueError(
+                "MultiOutPutClassifier_and_MGS is not designed to work only with categorical "
+                "features. It requires some numerical features."
+            )
+        bool_mask = np.ones((X_positifs.shape[1]), dtype=bool)
+        bool_mask[self.categorical_features] = False
+        X_positifs_all_features = X_positifs.copy()
+        X_negatifs_all_features = X_negatifs.copy()
+        X_positifs = X_positifs_all_features[:, bool_mask]  ## continuous features
+        X_negatifs = X_negatifs_all_features[:, bool_mask]  ## continuous features
+        X_positifs_categorical = X_positifs_all_features[:, ~bool_mask]
+        X_negatifs_categorical = X_negatifs_all_features[:, ~bool_mask]
+        X_positifs = X_positifs.astype(float)
+
+        n_minoritaire = X_positifs.shape[0]
+        dimension = X_positifs.shape[1]  ## features continues seulement
+
+        np.random.seed(self.random_state)
+        if self.to_encode:
+            ord_encoder = OrdinalEncoder(
+                handle_unknown="use_encoded_value", unknown_value=-1, dtype=float
+            )
+            X_positifs_categorical_encoded = ord_encoder.fit_transform(
+                X_positifs_categorical.astype(str)
+            )
+            ### Fit :
+            self.Classifier.fit(
+                X_positifs, X_positifs_categorical_encoded
+            )  # learn on continuous features in order to predict categorical feature
+        else:
+            if self.bool_drf:
+                self.Classifier.fit(
+                    X_positifs, X_positifs_categorical
+                )  # learn on continuous features in order to predict categorical features
+
+            elif len(self.categorical_features)==1: # ravel in case of one categorical freatures
+                self.Classifier.fit(
+                    X_positifs, X_positifs_categorical.ravel().astype(str)
+                )  # learn on continuous features in order to predict categorical features
+            
+            else:
+                self.Classifier.fit(
+                    X_positifs, X_positifs_categorical.astype(str)
+                )  # learn on continuous features in order to predict categorical features
+        ######### CONTINUOUS ################
+        neigh = NearestNeighbors(n_neighbors=self.K, algorithm="ball_tree")
+        neigh.fit(X_positifs)
+        neighbors_by_index = neigh.kneighbors(
+            X=X_positifs, n_neighbors=self.K + 1, return_distance=False
+        )
+        n_synthetic_sample = n_final_sample - n_minoritaire
+        if self.ledoitwolfcov:
+            # We sample from central point
+            mus = X_positifs
+            As = []
+            for i in range(n_minoritaire):
+                covariance, shrinkage = ledoit_wolf(X_positifs[neighbors_by_index[i,1:],:]-mus[neighbors_by_index[i,0]],assume_centered=True)
+                As.append(covariance)
+            As= np.array(As)   
+        
+        elif self.oascov:
+            # We sample from central point
+            mus = X_positifs
+            As = []
+            for i in range(n_minoritaire):
+                covariance, shrinkage = oas(X_positifs[neighbors_by_index[i,1:],:]-mus[neighbors_by_index[i,0]],assume_centered=True)
+                As.append(covariance)
+            As= np.array(As) 
+        elif self.tracecov:
+            # We sample from central point
+            mus = X_positifs
+            As = []
+            p = X_positifs.shape[1]
+            for i in range(n_minoritaire):
+                covariance  = empirical_covariance(X_positifs[neighbors_by_index[i,1:],:]-mus[neighbors_by_index[i,0]],assume_centered=True)
+                final_covariance = (np.trace(covariance)/p) * np.eye(p)
+                As.append(final_covariance) 
+            As= np.array(As) 
+        elif self.idcov:
+            # We sample from mean of neighbors
+            all_neighbors = X_positifs[neighbors_by_index.flatten()]
+            mus = (1 / (self.K + 1)) * all_neighbors.reshape(
+                len(X_positifs), self.K + 1, dimension
+                ).sum(axis=1)
+            As = []
+            p = X_positifs.shape[1]
+            for i in range(n_minoritaire):
+                final_covariance = (1/p) * np.eye(p)
+                As.append(final_covariance) 
+            As= np.array(As) 
+        elif self.idcov2:
+            # We sample from central point
+            mus = X_positifs
+            As = []
+            p = X_positifs.shape[1]
+            for i in range(n_minoritaire):
+                final_covariance = (1/p) * np.eye(p)
+                As.append(final_covariance) 
+            As= np.array(As) 
+        elif self.expcov:
+            # We sample from central point
+            mus = X_positifs
+            As = []
+            p = X_positifs.shape[1]
+            for i in range(n_minoritaire):
+                diffs = X_positifs[neighbors_by_index[i,1:],:]-mus[neighbors_by_index[i,0]]
+                exp_dist = np.exp(-np.linalg.norm(diffs, axis=1))
+                weights = exp_dist / (np.sum(exp_dist))
+                final_covariance = (diffs.T.dot(np.diag(weights)).dot(diffs)) + np.eye(dimension) * 1e-10
+                As.append(final_covariance) 
+            As= np.array(As) 
+            
+
+        else:
+            # computing mu and covariance at once for every minority class points
+            all_neighbors = X_positifs[neighbors_by_index.flatten()]
+            if self.weighted_cov:
+                # We sample from central point
+                mus = X_positifs
+            else:
+                # We sample from mean of neighbors
+                mus = (1 / (self.K + 1)) * all_neighbors.reshape(
+                    len(X_positifs), self.K + 1, dimension
+                ).sum(axis=1)
+            centered_X = X_positifs[neighbors_by_index.flatten()] - np.repeat(
+                mus, self.K + 1, axis=0
+            )
+            centered_X = centered_X.reshape(len(X_positifs), self.K + 1, dimension)
+
+            if self.weighted_cov:
+                distances = (centered_X**2).sum(axis=-1)
+                distances[distances > 1e-10] = distances[distances > 1e-10] ** -0.25
+
+                # inv sqrt for positives only and half of power for multiplication below
+                distances /= distances.sum(axis=-1)[:, np.newaxis]
+                centered_X = (
+                    np.repeat(distances[:, :, np.newaxis] ** 0.5, dimension, axis=2)
+                    * centered_X
+                )
+
+            covs = (
+                self.llambda
+                * np.matmul(np.swapaxes(centered_X, 1, 2), centered_X)
+                / (self.K + 1)
+            )
+
+            # spectral decomposition of all covariances
+            # eigen_values, eigen_vectors = np.linalg.eigh(covs) ## long
+            # eigen_values[eigen_values > 1e-10] = eigen_values[eigen_values > 1e-10] ** .5
+            # As = [eigen_vectors[i].dot(eigen_values[i]) for i in range(len(eigen_values))]
+            As = np.linalg.cholesky(
+                covs + 1e-10 * np.identity(dimension)
+            )  ## add parameter for 1e-10 ?
+
+        # sampling all new points
+        # u = np.random.normal(loc=0, scale=1, size=(len(indices), dimension))
+        # new_samples = [mus[central_point] + As[central_point].dot(u[central_point]) for i in indices]
+        indices = np.random.randint(n_minoritaire, size=n_synthetic_sample)
+        new_samples = np.zeros((n_synthetic_sample, dimension))
+        for i, central_point in enumerate(indices):
+            u = np.random.normal(loc=0, scale=1, size=dimension)
+            new_observation = mus[central_point, :] + As[central_point].dot(u)
+            new_samples[i, :] = new_observation
+        ############### CATEGORICAL ##################
+        if self.bool_drf: # special case of prediction for DRF
+            out = self.Classifier.predict(newdata=new_samples, functional="weights")
+            sample = np.zeros((new_samples.shape[0], out.y.shape[1]))
+            for i in range(new_samples.shape[0]): 
+                ids = np.random.choice(range(out.y.shape[0]), 1, p=out.weights[i, :])[0]
+                sample[i,:] = out.y[ids,:]
+            new_samples_cat = sample
+
+        elif len(self.categorical_features)==1:# Ravel in case of one categorical freatures
+            if scaler is None: # We give the scaler to the predictor
+                new_samples_cat = self.Classifier.predict(new_samples).reshape(-1,1)
+            else:
+                new_samples_cat = self.Classifier.predict(new_samples,scaler=scaler).reshape(-1,1)
+        else:
+            if scaler is None:# We give the scaler to the predictor
+                new_samples_cat = self.Classifier.predict(new_samples)  
+            else :
+                 new_samples_cat = self.Classifier.predict(new_samples,scaler=scaler)  
+        np.random.seed()
+        ##### END ######
+        
+        if self.to_encode:
+            new_samples_cat = ord_encoder.inverse_transform(new_samples_cat.astype(int))
+        new_samples_final = np.zeros(
+            (n_synthetic_sample, X_positifs_all_features.shape[1]), dtype=object
+        )
+        new_samples_final[:, bool_mask] = new_samples
+        new_samples_final[:, ~bool_mask] = new_samples_cat
+        # new_samples_final = np.concatenate((new_samples,new_samples_cat), axis=1)
+
+        X_positifs_final = np.zeros(
+            (len(X_positifs), X_positifs_all_features.shape[1]), dtype=object
+        )
+        X_positifs_final[:, bool_mask] = X_positifs
+        X_positifs_final[:, ~bool_mask] = X_positifs_categorical
+
+        X_negatifs_final = np.zeros(
+            (len(X_negatifs), X_positifs_all_features.shape[1]), dtype=object
+        )
+        X_negatifs_final[:, bool_mask] = X_negatifs
+        X_negatifs_final[:, ~bool_mask] = X_negatifs_categorical
+
+        oversampled_X = np.concatenate(
+            (X_negatifs_final, X_positifs_final, new_samples_final), axis=0
+        )
+        oversampled_y = np.hstack(
+            (np.full(len(X_negatifs), 0), np.full((n_final_sample,), 1))
+        )
+
+        return oversampled_X, oversampled_y
+    
+
+class OracleOverSampler(BaseOverSampler):
+    """
+    MGS : Multivariate Gaussian SMOTE
+    """
+
+    def __init__(
+        self, generator,generator_params=None,sampling_strategy="auto", random_state=None, to_str=True
+    ):
+        """
+        llambda is a float.
+        """
+        super().__init__(sampling_strategy=sampling_strategy)
+        self.random_state = random_state
+        self.generator=generator
+        self.generator_params=generator_params
+        self.to_str=to_str
 
     def _check_X_y(self, X, y):
         """Overwrite the checking to let pass some string for categorical
@@ -1817,138 +2473,72 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
             X_negatifs = X[y == 0]
             if n_final_sample is None:
                 n_final_sample = (y == 0).sum()
-        if len(self.categorical_features) == X.shape[1]:
-            raise ValueError(
-                "MultiOutPutClassifier_and_MGS is not designed to work only with categorical "
-                "features. It requires some numerical features."
-            )
-
-        bool_mask = np.ones((X_positifs.shape[1]), dtype=bool)
-        bool_mask[self.categorical_features] = False
-        X_positifs_all_features = X_positifs.copy()
-        X_negatifs_all_features = X_negatifs.copy()
-        X_positifs = X_positifs_all_features[:, bool_mask]  ## continuous features
-        X_negatifs = X_negatifs_all_features[:, bool_mask]  ## continuous features
-        X_positifs_categorical = X_positifs_all_features[:, ~bool_mask]
-        X_negatifs_categorical = X_negatifs_all_features[:, ~bool_mask]
-        X_positifs = X_positifs.astype(float)
-
+        
         n_minoritaire = X_positifs.shape[0]
-        dimension = X_positifs.shape[1]  ## features continues seulement
-
-        np.random.seed(self.random_state)
-        if self.to_encode:
-            ord_encoder = OrdinalEncoder(
-                handle_unknown="use_encoded_value", unknown_value=-1, dtype=float
-            )
-            X_positifs_categorical_encoded = ord_encoder.fit_transform(
-                X_positifs_categorical.astype(str)
-            )
-            ### Fit :
-            self.Classifier.fit(
-                X_positifs, X_positifs_categorical_encoded
-            )  # learn on continuous features in order to predict categorical feature
-        else:
-            self.Classifier.fit(
-                X_positifs, X_positifs_categorical.astype(str)
-            )  # learn on continuous features in order to predict categorical features
-        ######### CONTINUOUS ################
-        neigh = NearestNeighbors(n_neighbors=self.K, algorithm="ball_tree")
-        neigh.fit(X_positifs)
-        neighbors_by_index = neigh.kneighbors(
-            X=X_positifs, n_neighbors=self.K + 1, return_distance=False
-        )
-
+        dimension = X_positifs.shape[1]
         n_synthetic_sample = n_final_sample - n_minoritaire
-        # computing mu and covariance at once for every minority class points
-        all_neighbors = X_positifs[neighbors_by_index.flatten()]
-        if self.weighted_cov:
-            # We sample from central point
-            mus = X_positifs
-        else:
-            # We sample from mean of neighbors
-            mus = (1 / (self.K + 1)) * all_neighbors.reshape(
-                len(X_positifs), self.K + 1, dimension
-            ).sum(axis=1)
-        centered_X = X_positifs[neighbors_by_index.flatten()] - np.repeat(
-            mus, self.K + 1, axis=0
-        )
-        centered_X = centered_X.reshape(len(X_positifs), self.K + 1, dimension)
+        if self.to_str:
+            new_samples = np.zeros((n_synthetic_sample, dimension),dtype=str) # general case
+        else: 
+            new_samples = np.zeros((n_synthetic_sample, dimension)) # case only  binary categorical features
+        current_all_n=0
+        seed_generator=self.random_state 
+        while current_all_n < n_synthetic_sample :
+            if self.generator_params is None:
+                curr_X,curr_target,curr_target_num = self.generator(n_samples=n_synthetic_sample,dimension=dimension,random_state=seed_generator,verbose=-1)
+            else:
+                curr_X,curr_target,curr_target_num = self.generator(n_samples=n_synthetic_sample,dimension=dimension,random_state=seed_generator,verbose=-1,**self.generator_params)
+                
 
-        if self.weighted_cov:
-            distances = (centered_X**2).sum(axis=-1)
-            distances[distances > 1e-10] = distances[distances > 1e-10] ** -0.25
+            curr_minority_X = curr_X[curr_target_num==1]
+            if current_all_n+len(curr_minority_X) < n_synthetic_sample:
+                new_samples[current_all_n:current_all_n+len(curr_minority_X),:] = curr_minority_X
+                current_all_n+=len(curr_minority_X)
+            else:
+                new_samples[current_all_n:,:] = curr_minority_X[:(n_synthetic_sample-current_all_n),:]
+                current_all_n = n_synthetic_sample
+            seed_generator+=1
 
-            # inv sqrt for positives only and half of power for multiplication below
-            distances /= distances.sum(axis=-1)[:, np.newaxis]
-            centered_X = (
-                np.repeat(distances[:, :, np.newaxis] ** 0.5, dimension, axis=2)
-                * centered_X
-            )
 
-        covs = (
-            self.llambda
-            * np.matmul(np.swapaxes(centered_X, 1, 2), centered_X)
-            / (self.K + 1)
-        )
-
-        # spectral decomposition of all covariances
-        # eigen_values, eigen_vectors = np.linalg.eigh(covs) ## long
-        # eigen_values[eigen_values > 1e-10] = eigen_values[eigen_values > 1e-10] ** .5
-        # As = [eigen_vectors[i].dot(eigen_values[i]) for i in range(len(eigen_values))]
-        As = np.linalg.cholesky(
-            covs + 1e-10 * np.identity(dimension)
-        )  ## add parameter for 1e-10 ?
-
-        # sampling all new points
-        # u = np.random.normal(loc=0, scale=1, size=(len(indices), dimension))
-        # new_samples = [mus[central_point] + As[central_point].dot(u[central_point]) for i in indices]
-        indices = np.random.randint(n_minoritaire, size=n_synthetic_sample)
-        new_samples = np.zeros((n_synthetic_sample, dimension))
-        for i, central_point in enumerate(indices):
-            u = np.random.normal(loc=0, scale=1, size=dimension)
-            new_observation = mus[central_point, :] + As[central_point].dot(u)
-            new_samples[i, :] = new_observation
-        ############### CATEGORICAL ##################
-        if self.to_encode:
-            if self.bool_drf:
-                out = self.Classifier.predict(newdata=new_samples, functional="mean")
-                new_samples_cat = out.mean
-            else :
-                new_samples_cat = self.Classifier.predict(new_samples)
-        else:
-            new_samples_cat = self.Classifier.predict(new_samples)
-        np.random.seed()
-        ##### END ######
-        if self.to_encode:
-            new_samples_cat = ord_encoder.inverse_transform(new_samples_cat.astype(int))
-        new_samples_final = np.zeros(
-            (n_synthetic_sample, X_positifs_all_features.shape[1]), dtype=object
-        )
-        new_samples_final[:, bool_mask] = new_samples
-        new_samples_final[:, ~bool_mask] = new_samples_cat
-        # new_samples_final = np.concatenate((new_samples,new_samples_cat), axis=1)
-
-        X_positifs_final = np.zeros(
-            (len(X_positifs), X_positifs_all_features.shape[1]), dtype=object
-        )
-        X_positifs_final[:, bool_mask] = X_positifs
-        X_positifs_final[:, ~bool_mask] = X_positifs_categorical
-
-        X_negatifs_final = np.zeros(
-            (len(X_negatifs), X_positifs_all_features.shape[1]), dtype=object
-        )
-        X_negatifs_final[:, bool_mask] = X_negatifs
-        X_negatifs_final[:, ~bool_mask] = X_negatifs_categorical
-
-        oversampled_X = np.concatenate(
-            (X_negatifs_final, X_positifs_final, new_samples_final), axis=0
-        )
+        oversampled_X = np.concatenate((X_negatifs, X_positifs, new_samples), axis=0)
         oversampled_y = np.hstack(
             (np.full(len(X_negatifs), 0), np.full((n_final_sample,), 1))
         )
-
+        
         return oversampled_X, oversampled_y
+        
+
+from data.data import generate_synthetic_features_logreg
+class OracleOneCat():
+    def __init__(self):
+        pass
+    def fit(self,X,y):
+        pass
+    def predict(self,X,scaler,y=None):
+        inversed_X = scaler.inverse_transform(X)
+        feature_cat_uniform, feature_cat_uniform_numeric = generate_synthetic_features_logreg(X=inversed_X,index_informatives=[0,1,2],list_modalities=['C','D'])
+        return feature_cat_uniform_numeric
+    
+from data.data import generate_synthetic_features_logreg_triple
+class OracleTwoCat():
+    def __init__(self):
+        pass
+    def fit(self,X,y):
+        pass
+    def predict(self,X,scaler,y=None):
+        inversed_X = scaler.inverse_transform(X)
+        
+        feature_cat_uniform, feature_cat_uniform_numeric = generate_synthetic_features_logreg_triple(X=inversed_X,index_informatives=[0,1,2],
+                                                                                list_modalities=['A','B','C'],
+                                                                                beta1=np.array([-8,7,6]),beta2=np.array([4,-7,3]),beta3=np.array([2,-1,2])
+                                                                                            )
+
+        feature_cat_uniform2, feature_cat_uniform_numeric2 = generate_synthetic_features_logreg_triple(X=inversed_X,index_informatives=[0,1,2],
+                                                                                    list_modalities=['D','E','F'],
+                                                                                    beta1=np.array([-4,5,6]),beta2=np.array([6,-3,2]),beta3=np.array([1,5,-1])
+                                                                                                )
+        feature_cat_uniform_numeric_final = np.hstack((feature_cat_uniform_numeric.reshape(-1,1),feature_cat_uniform_numeric2.reshape(-1,1)))
+        return feature_cat_uniform_numeric_final
 
 
 # SMOTE ENC from authors :
