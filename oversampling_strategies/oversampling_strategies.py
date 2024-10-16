@@ -839,8 +839,8 @@ class WMGS_NC_cov(BaseOverSampler):
         oascov=False,
         tracecov=False,
         idcov=False,
-        idcov2=False,
         expcov=False,
+        mucentered=False,
         n_points=None,
         llambda=1.0,
         sampling_strategy="auto",
@@ -863,8 +863,8 @@ class WMGS_NC_cov(BaseOverSampler):
         self.oascov=oascov
         self.tracecov=tracecov
         self.idcov=idcov
-        self.idcov2=idcov2
         self.expcov=expcov
+        self.mucentered=mucentered
         self.random_state = random_state
 
     def _check_X_y(self, X, y):
@@ -944,56 +944,79 @@ class WMGS_NC_cov(BaseOverSampler):
 
         n_synthetic_sample = n_final_sample - n_minoritaire
         if self.ledoitwolfcov:
-            # We sample from central point
-            mus = X_positifs
+            if self.mucentered:
+                # We sample from mean of neighbors
+                all_neighbors = X_positifs[neighbor_by_index.flatten()]
+                mus = (1 / (self.K + 1)) * all_neighbors.reshape(
+                    len(X_positifs), self.K + 1, dimension_continuous
+                    ).sum(axis=1)
+            else:
+                 # We sample from central point
+                mus = X_positifs
             As = []
             for i in range(n_minoritaire):
                 covariance, shrinkage = ledoit_wolf(X_positifs[neighbor_by_index[i,1:],:]-mus[neighbor_by_index[i,0]],assume_centered=True)
-                As.append(covariance)
+                As.append(self.llambda*covariance)
             As= np.array(As)   
         
         elif self.oascov:
-            # We sample from central point
-            mus = X_positifs
+            if self.mucentered:
+                # We sample from mean of neighbors
+                all_neighbors = X_positifs[neighbor_by_index.flatten()]
+                mus = (1 / (self.K + 1)) * all_neighbors.reshape(
+                    len(X_positifs), self.K + 1, dimension_continuous
+                    ).sum(axis=1)
+            else:
+                 # We sample from central point
+                mus = X_positifs
             As = []
             for i in range(n_minoritaire):
                 covariance, shrinkage = oas(X_positifs[neighbor_by_index[i,1:],:]-mus[neighbor_by_index[i,0]],assume_centered=True)
-                As.append(covariance)
+                As.append(self.llambda*covariance)
             As= np.array(As) 
         elif self.tracecov:
-            # We sample from central point
-            mus = X_positifs
+            if self.mucentered:
+                # We sample from mean of neighbors
+                all_neighbors = X_positifs[neighbor_by_index.flatten()]
+                mus = (1 / (self.K + 1)) * all_neighbors.reshape(
+                    len(X_positifs), self.K + 1, dimension_continuous
+                    ).sum(axis=1)
+            else:
+                 # We sample from central point
+                mus = X_positifs
             As = []
             p = X_positifs.shape[1]
             for i in range(n_minoritaire):
                 covariance  = empirical_covariance(X_positifs[neighbor_by_index[i,1:],:]-mus[neighbor_by_index[i,0]],assume_centered=True)
                 final_covariance = (np.trace(covariance)/p) * np.eye(p)
-                As.append(final_covariance) 
+                As.append(self.llambda*final_covariance) 
             As= np.array(As) 
         elif self.idcov:
-            # We sample from mean of neighbors
-            all_neighbors = X_positifs[neighbor_by_index.flatten()]
-            mus = (1 / (self.K + 1)) * all_neighbors.reshape(
-                len(X_positifs), self.K + 1, dimension_continuous
-                ).sum(axis=1)
+            if self.mucentered:
+                # We sample from mean of neighbors
+                all_neighbors = X_positifs[neighbor_by_index.flatten()]
+                mus = (1 / (self.K + 1)) * all_neighbors.reshape(
+                    len(X_positifs), self.K + 1, dimension_continuous
+                    ).sum(axis=1)
+            else:
+                 # We sample from central point
+                mus = X_positifs
             As = []
             p = X_positifs.shape[1]
             for i in range(n_minoritaire):
                 final_covariance = (1/p) * np.eye(p)
-                As.append(final_covariance) 
-            As= np.array(As) 
-        elif self.idcov2:
-            # We sample from central point
-            mus = X_positifs
-            As = []
-            p = X_positifs.shape[1]
-            for i in range(n_minoritaire):
-                final_covariance = (1/p) * np.eye(p)
-                As.append(final_covariance) 
+                As.append(self.llambda*final_covariance) 
             As= np.array(As) 
         elif self.expcov:
-            # We sample from central point
-            mus = X_positifs
+            if self.mucentered:
+                # We sample from mean of neighbors
+                all_neighbors = X_positifs[neighbor_by_index.flatten()]
+                mus = (1 / (self.K + 1)) * all_neighbors.reshape(
+                    len(X_positifs), self.K + 1, dimension_continuous
+                    ).sum(axis=1)
+            else:
+                 # We sample from central point
+                mus = X_positifs
             As = []
             p = X_positifs.shape[1]
             for i in range(n_minoritaire):
@@ -1001,7 +1024,7 @@ class WMGS_NC_cov(BaseOverSampler):
                 exp_dist = np.exp(-np.linalg.norm(diffs, axis=1))
                 weights = exp_dist / (np.sum(exp_dist))
                 final_covariance = (diffs.T.dot(np.diag(weights)).dot(diffs)) + np.eye(dimension_continuous) * 1e-10
-                As.append(final_covariance) 
+                As.append(self.llambda*final_covariance) 
             As= np.array(As) 
             
 
@@ -2106,8 +2129,8 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
         oascov=False,
         tracecov=False,
         idcov=False,
-        idcov2=False,
         expcov=False,
+        mucentered=False,
         to_encode=False,
         n_points=None,
         llambda=1.0,
@@ -2134,7 +2157,7 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
         self.oascov=oascov
         self.tracecov=tracecov
         self.idcov=idcov
-        self.idcov2=idcov2
+        self.mucentered=mucentered,
         self.expcov=expcov
         self.bool_drf=bool_drf
         
@@ -2257,56 +2280,79 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
         )
         n_synthetic_sample = n_final_sample - n_minoritaire
         if self.ledoitwolfcov:
-            # We sample from central point
-            mus = X_positifs
+            if self.mucentered:
+                # We sample from central point
+                mus = X_positifs
+            else:
+                # We sample from mean of neighbors
+                all_neighbors = X_positifs[neighbors_by_index.flatten()]
+                mus = (1 / (self.K + 1)) * all_neighbors.reshape(
+                    len(X_positifs), self.K + 1, dimension
+                    ).sum(axis=1)
             As = []
             for i in range(n_minoritaire):
                 covariance, shrinkage = ledoit_wolf(X_positifs[neighbors_by_index[i,1:],:]-mus[neighbors_by_index[i,0]],assume_centered=True)
-                As.append(covariance)
+                As.append(self.llambda*covariance)
             As= np.array(As)   
         
         elif self.oascov:
-            # We sample from central point
-            mus = X_positifs
+            if self.mucentered:
+                # We sample from central point
+                mus = X_positifs
+            else:
+                # We sample from mean of neighbors
+                all_neighbors = X_positifs[neighbors_by_index.flatten()]
+                mus = (1 / (self.K + 1)) * all_neighbors.reshape(
+                    len(X_positifs), self.K + 1, dimension
+                    ).sum(axis=1)
             As = []
             for i in range(n_minoritaire):
                 covariance, shrinkage = oas(X_positifs[neighbors_by_index[i,1:],:]-mus[neighbors_by_index[i,0]],assume_centered=True)
-                As.append(covariance)
+                As.append(self.llambda*covariance)
             As= np.array(As) 
         elif self.tracecov:
-            # We sample from central point
-            mus = X_positifs
+            if self.mucentered:
+                # We sample from central point
+                mus = X_positifs
+            else:
+                # We sample from mean of neighbors
+                all_neighbors = X_positifs[neighbors_by_index.flatten()]
+                mus = (1 / (self.K + 1)) * all_neighbors.reshape(
+                    len(X_positifs), self.K + 1, dimension
+                    ).sum(axis=1)
             As = []
             p = X_positifs.shape[1]
             for i in range(n_minoritaire):
                 covariance  = empirical_covariance(X_positifs[neighbors_by_index[i,1:],:]-mus[neighbors_by_index[i,0]],assume_centered=True)
-                final_covariance = (np.trace(covariance)/p) * np.eye(p)
-                As.append(final_covariance) 
+                final_covariance =  (np.trace(covariance)/p) * np.eye(p)
+                As.append(self.llambda*final_covariance) 
             As= np.array(As) 
         elif self.idcov:
-            # We sample from mean of neighbors
-            all_neighbors = X_positifs[neighbors_by_index.flatten()]
-            mus = (1 / (self.K + 1)) * all_neighbors.reshape(
-                len(X_positifs), self.K + 1, dimension
-                ).sum(axis=1)
+            if self.mucentered:
+                # We sample from central point
+                mus = X_positifs
+            else:
+                # We sample from mean of neighbors
+                all_neighbors = X_positifs[neighbors_by_index.flatten()]
+                mus = (1 / (self.K + 1)) * all_neighbors.reshape(
+                    len(X_positifs), self.K + 1, dimension
+                    ).sum(axis=1)
             As = []
             p = X_positifs.shape[1]
             for i in range(n_minoritaire):
-                final_covariance = (1/p) * np.eye(p)
-                As.append(final_covariance) 
-            As= np.array(As) 
-        elif self.idcov2:
-            # We sample from central point
-            mus = X_positifs
-            As = []
-            p = X_positifs.shape[1]
-            for i in range(n_minoritaire):
-                final_covariance = (1/p) * np.eye(p)
-                As.append(final_covariance) 
+                final_covariance =  (1/p) * np.eye(p)
+                As.append(self.llambda*final_covariance) 
             As= np.array(As) 
         elif self.expcov:
-            # We sample from central point
-            mus = X_positifs
+            if self.mucentered:
+                # We sample from central point
+                mus = X_positifs
+            else:
+                # We sample from mean of neighbors
+                all_neighbors = X_positifs[neighbors_by_index.flatten()]
+                mus = (1 / (self.K + 1)) * all_neighbors.reshape(
+                    len(X_positifs), self.K + 1, dimension
+                    ).sum(axis=1)
             As = []
             p = X_positifs.shape[1]
             for i in range(n_minoritaire):
@@ -2314,7 +2360,7 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
                 exp_dist = np.exp(-np.linalg.norm(diffs, axis=1))
                 weights = exp_dist / (np.sum(exp_dist))
                 final_covariance = (diffs.T.dot(np.diag(weights)).dot(diffs)) + np.eye(dimension) * 1e-10
-                As.append(final_covariance) 
+                As.append(self.llambda* final_covariance) 
             As= np.array(As) 
             
 
@@ -2516,7 +2562,7 @@ class OracleOneCat():
         pass
     def predict(self,X,scaler,y=None):
         inversed_X = scaler.inverse_transform(X)
-        feature_cat_uniform, feature_cat_uniform_numeric = generate_synthetic_features_logreg(X=inversed_X,index_informatives=[0,1,2],list_modalities=['C','D'])
+        feature_cat_uniform, feature_cat_uniform_numeric = generate_synthetic_features_logreg(X=inversed_X,index_informatives=[0,1,2],list_modalities=['C','D'],beta=np.array([-8,7,6]),intercept=-2)
         return feature_cat_uniform_numeric
     
 from data.data import generate_synthetic_features_logreg_triple
@@ -2847,3 +2893,98 @@ class SMOTE_ENC_decoded(SMOTE_ENC):
             X_res[:, self.categorical_features].astype(float)
         )
         return X_res, y_res
+    
+
+
+class DrfSk(RandomForestClassifier):
+    def __init__(
+        self,
+        n_estimators=100,
+        *,
+        criterion="gini",
+        max_depth=None,
+        min_samples_split=2,
+        min_samples_leaf=1,
+        min_weight_fraction_leaf=0.0,
+        max_features="sqrt",
+        max_leaf_nodes=None,
+        min_impurity_decrease=0.0,
+        bootstrap=True,
+        oob_score=False,
+        n_jobs=None,
+        random_state=None,
+        verbose=0,
+        warm_start=False,
+        class_weight=None,
+        ccp_alpha=0.0,
+        max_samples=None,
+        monotonic_cst=None,
+    ):
+        super().__init__(
+            estimator=DecisionTreeClassifier(),
+            n_estimators=n_estimators,
+            estimator_params=(
+                "criterion",
+                "max_depth",
+                "min_samples_split",
+                "min_samples_leaf",
+                "min_weight_fraction_leaf",
+                "max_features",
+                "max_leaf_nodes",
+                "min_impurity_decrease",
+                "random_state",
+                "ccp_alpha",
+                "monotonic_cst",
+            ),
+            bootstrap=bootstrap,
+            oob_score=oob_score,
+            n_jobs=n_jobs,
+            random_state=random_state,
+            verbose=verbose,
+            warm_start=warm_start,
+            class_weight=class_weight,
+            max_samples=max_samples,
+        )
+
+        self.criterion = criterion
+        self.max_depth = max_depth
+        self.min_samples_split = min_samples_split
+        self.min_samples_leaf = min_samples_leaf
+        self.min_weight_fraction_leaf = min_weight_fraction_leaf
+        self.max_features = max_features
+        self.max_leaf_nodes = max_leaf_nodes
+        self.min_impurity_decrease = min_impurity_decrease
+        self.monotonic_cst = monotonic_cst
+        self.ccp_alpha = ccp_alpha
+
+    def fit(self, X, y, sample_weight=None):
+        self.trained_X = X
+        self.trained_y = y
+        super().fit(X=X,y=y,sample_weight=sample_weight)
+
+    def get_weights(self,x):   
+        n_tree = len(clf.estimators_)
+        w=np.zeros((len(self.trained_X),))
+        for tree in self.estimators_:
+            train_samples_leaves = tree.apply(self.trained_X)
+            x_leaf = tree.apply(x)[0]
+            indices_train_samples_in_same_leaf = np.where(train_samples_leaves==x_leaf)[0]
+            n_leaves_in = len(indices_train_samples_in_same_leaf)
+            if n_leaves_in != 0:
+                print(1/(n_tree*n_leaves_in))
+                for idx in indices_train_samples_in_same_leaf:
+                    w[idx] = w[idx] + 1/(n_tree*n_leaves_in)
+        return w
+
+    def predict(self,X):
+        #weights_all = np.apply_along_axis(self.get_weights,0,X,{'self':self})
+        size_train = len(self.trained_X)
+        list_index_train_X = np.arange(start=0,stop=size_train,step=1)
+        y_pred = []
+        for i in range(len(X)):
+            x = X[i,:].reshape(1, -1)
+            w = self.get_weights(x)
+            selected_index = np.random.choice(a=,size=list_index_train_X,replace=False,p=w)
+            y_pred.append(self.trained_y[selected_index])
+            
+        return np.array(y_pred)
