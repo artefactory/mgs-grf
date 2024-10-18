@@ -2896,6 +2896,7 @@ class SMOTE_ENC_decoded(SMOTE_ENC):
     
 
 
+from sklearn.ensemble._forest import ForestClassifier
 class DrfSk(RandomForestClassifier):
     def __init__(
         self,
@@ -2920,7 +2921,7 @@ class DrfSk(RandomForestClassifier):
         max_samples=None,
         monotonic_cst=None,
     ):
-        super().__init__(
+        super(ForestClassifier,self).__init__(
             estimator=DecisionTreeClassifier(),
             n_estimators=n_estimators,
             estimator_params=(
@@ -2971,7 +2972,6 @@ class DrfSk(RandomForestClassifier):
             indices_train_samples_in_same_leaf = np.where(train_samples_leaves==x_leaf)[0]
             n_leaves_in = len(indices_train_samples_in_same_leaf)
             if n_leaves_in != 0:
-                print(1/(n_tree*n_leaves_in))
                 for idx in indices_train_samples_in_same_leaf:
                     w[idx] = w[idx] + 1/(n_tree*n_leaves_in)
         return w
@@ -2984,7 +2984,7 @@ class DrfSk(RandomForestClassifier):
         for i in range(len(X)):
             x = X[i,:].reshape(1, -1)
             w = self.get_weights(x)
-            selected_index = np.random.choice(a=,size=list_index_train_X,replace=False,p=w)
+            selected_index = np.random.choice(a=list_index_train_X,size=1,replace=False,p=w)
             y_pred.append(self.trained_y[selected_index])
             
-        return np.array(y_pred)
+        return np.array(y_pred).reshape(-1,)
