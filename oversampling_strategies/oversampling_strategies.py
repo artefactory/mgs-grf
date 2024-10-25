@@ -11,6 +11,7 @@ from sklearn.metrics import roc_auc_score
 
 from scipy import stats
 from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import StandardScaler
 from imblearn.utils import check_target_type
 from collections import Counter
 
@@ -2132,11 +2133,15 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
         expcov=False,
         mucentered=False,
         to_encode=False,
+        to_encode_onehot=False,
         n_points=None,
         llambda=1.0,
         sampling_strategy="auto",
         random_state=None,
-        bool_drf=False
+        bool_drf=False,
+        bool_rf=False,
+        bool_rf_regressor=False,
+        bool_drfsk_regressor=False,
     ):
         """
         llambda is a float.
@@ -2151,7 +2156,11 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
         self.categorical_features = categorical_features
         self.Classifier = Classifier
         self.random_state = random_state
-        self.to_encode = to_encode
+        self.to_encode = to_encode ## encode categorical Z vector with ordinal encoding
+        self.to_encode_onehot = to_encode_onehot ## encode categorical Z vector with one hot encoding
+        self.bool_rf = bool_rf ## Perform special predictt of RFClassifier in when to_encode_onehot=True
+        self.bool_rf_regressor =bool_rf_regressor ##Perform special predictt of RFRegressor in when to_encode_onehot=True
+        self.bool_drfsk_regressor = bool_drfsk_regressor
         self.weighted_cov = weighted_cov
         self.ledoitwolfcov=ledoitwolfcov
         self.oascov=oascov
@@ -2257,6 +2266,18 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
             self.Classifier.fit(
                 X_positifs, X_positifs_categorical_encoded
             )  # learn on continuous features in order to predict categorical feature
+        elif self.to_encode_onehot:
+            onehot_encoder = OneHotEncoder(handle_unknown='ignore',dtype=float,sparse_output=False)
+            X_positifs_categorical_encoded = onehot_encoder.fit_transform(
+                X_positifs_categorical.astype(str)
+            )
+            if self.bool_rf_regressor or self.bool_drfsk_regressor:
+                var_scaler_cat = StandardScaler(with_mean=False,with_std=True)
+                X_positifs_categorical_encoded = var_scaler_cat.fit_transform(X_positifs_categorical_encoded) ## we scale the categorical variables 
+            ### Fit :
+            self.Classifier.fit(
+                X_positifs, X_positifs_categorical_encoded
+            )  # learn on continuous features in order to predict categorical feature
         else:
             if self.bool_drf:
                 self.Classifier.fit(
@@ -2267,11 +2288,12 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
                 self.Classifier.fit(
                     X_positifs, X_positifs_categorical.ravel().astype(str)
                 )  # learn on continuous features in order to predict categorical features
-            
             else:
                 self.Classifier.fit(
                     X_positifs, X_positifs_categorical.astype(str)
                 )  # learn on continuous features in order to predict categorical features
+
+
         ######### CONTINUOUS ################
         neigh = NearestNeighbors(n_neighbors=self.K, algorithm="ball_tree")
         neigh.fit(X_positifs)
@@ -2422,22 +2444,94 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
                 ids = np.random.choice(range(out.y.shape[0]), 1, p=out.weights[i, :])[0]
                 sample[i,:] = out.y[ids,:]
             new_samples_cat = sample
+        if self.bool_rf and self.to_encode_onehot:
+            categories_onehot = onehot_encoder.categories_
+            new_samples_cat_probas_all = self.Classifier.predict_proba(new_samples) # list of pred_probas for each categorical one hot encoded.
+            
+            #print('new_samples shape', new_samples.shape)
+            #print('new_samples_cat_probas_all :',new_samples_cat_probas_all)
+            #print('len new_samples_cat_probas_all : ',len(new_samples_cat_probas_all))
+            #print('new_samples_cat_probas_all[0] : ',new_samples_cat_probas_all[0])
+
+            new_samples_cat_probas  = new_samples_cat_probas_all[0][:,1]
+            #print('new_samples_cat_probas shape begin',new_samples_cat_probas.shape)
+            for i in range(1,len(onehot_encoder.get_feature_names_out())):
+                new_samples_cat_probas = np.hstack((new_samples_cat_probas.reshape(-1,1),new_samples_cat_probas_all[i][:,1].reshape(-1,1)))
+            #print('new_samples_cat_probas shape end',new_samples_cat_probas.shape)
+            new_samples_cat = np.zeros((new_samples_cat_probas.shape[0],new_samples_cat_probas.shape[1]))
+            #print('new_sample_cat shape :',new_samples_cat.shape)
+            #print('new_sample_cat : ',new_samples_cat)
+            
+            
+            start_idx = 0
+            for i in range(len(categories_onehot)):
+                curr_n_modalities = len(categories_onehot[i])
+                #print('curr_n_modalities : ',curr_n_modalities)
+                indices_argmax = np.argmax(new_samples_cat_probas[:,start_idx:(start_idx+curr_n_modalities)],axis=1) 
+                #print('indices_argmax :', indices_argmax)
+                indices_argmax = start_idx + indices_argmax
+                #print('indices_argmax refac:', indices_argmax)
+                new_samples_cat[np.arange(len(new_samples_cat)),indices_argmax] = 1
+                #print('new_sample_cat[:,indices_argmax] = 1',new_samples_cat[np.arange(len(new_samples_cat)),indices_argmax])
+                start_idx = curr_n_modalities
+        elif (self.bool_rf_regressor  or self.bool_drfsk_regressor) and self.to_encode_onehot:
+            categories_onehot = onehot_encoder.categories_
+            new_samples_cat_pred= self.Classifier.predict(new_samples) # list of  pred for each categorical one hot encoded.
+            new_samples_cat_pred_probas = var_scaler_cat.inverse_transform(new_samples_cat_pred)
+            #print('new_samples shape', new_samples.shape)
+            #print('new_samples_cat_pred shape :',new_samples_cat_pred.shape)
+            #print('new_samples_cat_pred :',new_samples_cat_pred)
+            #print('new_samples_cat_pred_probas :',new_samples_cat_pred_probas)
+            
+            
+            #print('new_samples shape', new_samples.shape)
+            #print('new_samples_cat_probas_all :',new_samples_cat_probas_all)
+            #print('len new_samples_cat_probas_all : ',len(new_samples_cat_probas_all))
+            #print('new_samples_cat_probas_all[0] : ',new_samples_cat_probas_all[0])
+
+            #new_samples_cat_probas  = new_samples_cat_probas_all[0][:,1]
+            #print('new_samples_cat_probas shape begin',new_samples_cat_probas.shape)
+            #for i in range(1,len(onehot_encoder.get_feature_names_out())):
+            #    print(i)
+            #    new_samples_cat_probas = np.hstack((new_samples_cat_probas.reshape(-1,1),new_samples_cat_probas_all[i][:,1].reshape(-1,1)))
+            #print('new_samples_cat_probas shape end',new_samples_cat_probas.shape)
+            new_samples_cat = np.zeros((new_samples_cat_pred_probas.shape[0],new_samples_cat_pred_probas.shape[1]))
+            #print('new_sample_cat shape :',new_samples_cat.shape)
+            #print('new_sample_cat : ',new_samples_cat)
+            
+            
+            start_idx = 0
+            for i in range(len(categories_onehot)):
+                curr_n_modalities = len(categories_onehot[i])
+                #print('curr_n_modalities : ',curr_n_modalities)
+                indices_argmax = np.argmax(new_samples_cat_pred_probas[:,start_idx:(start_idx+curr_n_modalities)],axis=1) 
+                #print('indices_argmax :', indices_argmax)
+                indices_argmax = start_idx + indices_argmax
+                #print('indices_argmax refac:', indices_argmax)
+                new_samples_cat[np.arange(len(new_samples_cat)),indices_argmax] = 1
+                #print('new_sample_cat[:,indices_argmax] = 1',new_samples_cat[np.arange(len(new_samples_cat)),indices_argmax])
+                start_idx = curr_n_modalities
+
+            #print('new_sample_cat : ',new_samples_cat)
 
         elif len(self.categorical_features)==1:# Ravel in case of one categorical freatures
-            if scaler is None: # We give the scaler to the predictor
+            if scaler is None: 
                 new_samples_cat = self.Classifier.predict(new_samples).reshape(-1,1)
-            else:
+            else:# We give the scaler to the predictor (for SemiOracle )
                 new_samples_cat = self.Classifier.predict(new_samples,scaler=scaler).reshape(-1,1)
         else:
-            if scaler is None:# We give the scaler to the predictor
+            if scaler is None:
                 new_samples_cat = self.Classifier.predict(new_samples)  
-            else :
+            else :# We give the scaler to the predictor (for SemiOracle )
                  new_samples_cat = self.Classifier.predict(new_samples,scaler=scaler)  
         np.random.seed()
         ##### END ######
         
         if self.to_encode:
             new_samples_cat = ord_encoder.inverse_transform(new_samples_cat.astype(int))
+        elif self.to_encode_onehot:
+            new_samples_cat = onehot_encoder.inverse_transform(new_samples_cat.astype(int))
+            
         new_samples_final = np.zeros(
             (n_synthetic_sample, X_positifs_all_features.shape[1]), dtype=object
         )
@@ -2564,6 +2658,27 @@ class OracleOneCat():
         inversed_X = scaler.inverse_transform(X)
         feature_cat_uniform, feature_cat_uniform_numeric = generate_synthetic_features_logreg(X=inversed_X,index_informatives=[0,1,2],list_modalities=['C','D'],beta=np.array([-8,7,6]),intercept=-2)
         return feature_cat_uniform_numeric
+    
+
+from data.data import generate_synthetic_features_multinomial_quadruple
+class OracleTwoCat5():
+    def __init__(self):
+        pass
+    def fit(self,X,y):
+        pass
+    def predict(self,X,scaler,y=None):
+        inversed_X = scaler.inverse_transform(X)
+        n_samples = len(inversed_X)
+        
+        z_feature_cat_uniform, z_feature_cat_uniform_numeric = generate_synthetic_features_multinomial_quadruple(
+        X=inversed_X,index_informatives=[0,1,2],list_modalities=['Ae','Bd','Af','Ce'],beta1=np.array([1,3,2]),
+        beta2=np.array([4,-7,3]),beta3=np.array([5,-1,6]),beta4=np.array([3,2,1]),intercept=-3
+        )
+        first_cat_feature = np.array([z_feature_cat_uniform_numeric[i][0] for i in range(n_samples) ])
+        second_cat_feature = np.array([z_feature_cat_uniform_numeric[i][1] for i in range(n_samples) ])
+        feature_cat_uniform_numeric_final = np.hstack((first_cat_feature.reshape(-1,1),second_cat_feature.reshape(-1,1)))
+                                                                                                
+        return feature_cat_uniform_numeric_final
     
 from data.data import generate_synthetic_features_logreg_triple
 class OracleTwoCat():
@@ -2897,6 +3012,8 @@ class SMOTE_ENC_decoded(SMOTE_ENC):
 
 
 from sklearn.ensemble._forest import ForestClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.tree import DecisionTreeClassifier
 class DrfSk(RandomForestClassifier):
     def __init__(
         self,
@@ -2962,12 +3079,16 @@ class DrfSk(RandomForestClassifier):
         self.trained_X = X
         self.trained_y = y
         super().fit(X=X,y=y,sample_weight=sample_weight)
+        self.train_samples_leaves = []
+        for tree in self.estimators_:
+            self.train_samples_leaves.append(tree.apply(self.trained_X)) 
 
     def get_weights(self,x):   
-        n_tree = len(clf.estimators_)
+        n_tree = len(self.estimators_)
         w=np.zeros((len(self.trained_X),))
-        for tree in self.estimators_:
-            train_samples_leaves = tree.apply(self.trained_X)
+        for t,tree in enumerate(self.estimators_):
+            #train_samples_leaves = tree.apply(self.trained_X)
+            train_samples_leaves = self.train_samples_leaves[t]
             x_leaf = tree.apply(x)[0]
             indices_train_samples_in_same_leaf = np.where(train_samples_leaves==x_leaf)[0]
             n_leaves_in = len(indices_train_samples_in_same_leaf)
@@ -2980,11 +3101,110 @@ class DrfSk(RandomForestClassifier):
         #weights_all = np.apply_along_axis(self.get_weights,0,X,{'self':self})
         size_train = len(self.trained_X)
         list_index_train_X = np.arange(start=0,stop=size_train,step=1)
-        y_pred = []
+        y_pred = np.zeros((len(X),self.trained_y.shape[1]))
         for i in range(len(X)):
             x = X[i,:].reshape(1, -1)
             w = self.get_weights(x)
             selected_index = np.random.choice(a=list_index_train_X,size=1,replace=False,p=w)
-            y_pred.append(self.trained_y[selected_index])
+            y_pred[i] = self.trained_y[selected_index]
             
-        return np.array(y_pred).reshape(-1,)
+        return np.array(y_pred)
+    
+
+
+from sklearn.ensemble._forest import ForestRegressor
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.tree import DecisionTreeRegressor
+class DrfSkRegressor(RandomForestRegressor):
+    def __init__(
+        self,
+        n_estimators=100,
+        *,
+        criterion="squared_error",
+        max_depth=None,
+        min_samples_split=2,
+        min_samples_leaf=1,
+        min_weight_fraction_leaf=0.0,
+        max_features=1.0,
+        max_leaf_nodes=None,
+        min_impurity_decrease=0.0,
+        bootstrap=True,
+        oob_score=False,
+        n_jobs=None,
+        random_state=None,
+        verbose=0,
+        warm_start=False,
+        ccp_alpha=0.0,
+        max_samples=None,
+        monotonic_cst=None,
+    ):
+        super(ForestRegressor,self).__init__(
+            estimator=DecisionTreeRegressor(),
+            n_estimators=n_estimators,
+            estimator_params=(
+                "criterion",
+                "max_depth",
+                "min_samples_split",
+                "min_samples_leaf",
+                "min_weight_fraction_leaf",
+                "max_features",
+                "max_leaf_nodes",
+                "min_impurity_decrease",
+                "random_state",
+                "ccp_alpha",
+                "monotonic_cst",
+            ),
+            bootstrap=bootstrap,
+            oob_score=oob_score,
+            n_jobs=n_jobs,
+            random_state=random_state,
+            verbose=verbose,
+            warm_start=warm_start,
+            max_samples=max_samples,
+        )
+
+        self.criterion = criterion
+        self.max_depth = max_depth
+        self.min_samples_split = min_samples_split
+        self.min_samples_leaf = min_samples_leaf
+        self.min_weight_fraction_leaf = min_weight_fraction_leaf
+        self.max_features = max_features
+        self.max_leaf_nodes = max_leaf_nodes
+        self.min_impurity_decrease = min_impurity_decrease
+        self.ccp_alpha = ccp_alpha
+        self.monotonic_cst = monotonic_cst
+
+    def fit(self, X, y, sample_weight=None):
+        self.trained_X = X
+        self.trained_y = y
+        super().fit(X=X,y=y,sample_weight=sample_weight)
+        self.train_samples_leaves = []
+        for tree in self.estimators_:
+            self.train_samples_leaves.append(tree.apply(self.trained_X)) 
+
+    def get_weights(self,x):   
+        n_tree = len(self.estimators_)
+        w=np.zeros((len(self.trained_X),))
+        for t,tree in enumerate(self.estimators_):
+            #train_samples_leaves = tree.apply(self.trained_X)
+            train_samples_leaves = self.train_samples_leaves[t]
+            x_leaf = tree.apply(x)[0]
+            indices_train_samples_in_same_leaf = np.where(train_samples_leaves==x_leaf)[0]
+            n_leaves_in = len(indices_train_samples_in_same_leaf)
+            if n_leaves_in != 0:
+                for idx in indices_train_samples_in_same_leaf:
+                    w[idx] = w[idx] + 1/(n_tree*n_leaves_in)
+        return w
+
+    def predict(self,X):
+        #weights_all = np.apply_along_axis(self.get_weights,0,X,{'self':self})
+        size_train = len(self.trained_X)
+        list_index_train_X = np.arange(start=0,stop=size_train,step=1)
+        y_pred = np.zeros((len(X),self.trained_y.shape[1]))
+        for i in range(len(X)):
+            x = X[i,:].reshape(1, -1)
+            w = self.get_weights(x)
+            selected_index = np.random.choice(a=list_index_train_X,size=1,replace=False,p=w)
+            y_pred[i] = self.trained_y[selected_index]
+
+        return np.array(y_pred)
