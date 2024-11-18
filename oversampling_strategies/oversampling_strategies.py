@@ -760,7 +760,7 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
             X_positifs_categorical_encoded = onehot_encoder.fit_transform(
                 X_positifs_categorical.astype(str)
             )
-            if self.bool_rf_regressor or self.bool_drfsk_regressor:
+            if self.bool_rf_regressor or self.bool_drfsk_regressor:  ## When using regressorsn the data are scaled. Because regressor predict is tretaed diffrently (probas got diffrently)
                 var_scaler_cat = StandardScaler(with_mean=False,with_std=True)
                 X_positifs_categorical_encoded = var_scaler_cat.fit_transform(X_positifs_categorical_encoded) ## we scale the categorical variables 
             ### Fit :
