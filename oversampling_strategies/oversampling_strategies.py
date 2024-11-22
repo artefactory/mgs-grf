@@ -1,4 +1,3 @@
-import random
 import math
 
 import numpy as np
@@ -7,12 +6,11 @@ from imblearn.over_sampling import SMOTE
 from imblearn.over_sampling.base import BaseOverSampler
 from sklearn.neighbors import NearestNeighbors
 from sklearn.metrics import roc_auc_score
-
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder
 from sklearn.preprocessing import StandardScaler
+from sklearn.covariance import ledoit_wolf,oas,empirical_covariance
 from imblearn.utils import check_target_type
 from collections import Counter
-
 
 class CVSmoteModel(object):
     """
@@ -146,7 +144,8 @@ class MGS(BaseOverSampler):
                 0
             ]  ## the central point is selected for the expectation and covariance matrix
             indices_neigh.extend(
-                random.sample(range(1, self.K + 1), self.n_points)
+                #random.sample(range(1, self.K + 1), self.n_points)
+                np.random.choice(a=range(1, self.K + 1),size=self.n_points)
             )  # The nearrest neighbor selected for the estimation
             indice_neighbors = neighbor_by_index[indice][indices_neigh]
             mu = (1 / self.K + 1) * X_positifs[indice_neighbors, :].sum(axis=0)
@@ -356,12 +355,40 @@ class WMGS_NC_cov(BaseOverSampler):
                 "MGS-NC is not designed to work only with numerical "
                 "features. It requires some categorical features."
             )
+    def fit_resample(self, X, y):  
+        """Resample the dataset.
+
+        Parameters
+        ----------
+        X : {array-like, dataframe, sparse matrix} of shape \
+                (n_samples, n_features)
+            Matrix containing the data which have to be sampled.
+
+        y : array-like of shape (n_samples,)
+            Corresponding label for each sample in X.
+
+        Returns
+        -------
+        X_resampled : {array-like, dataframe, sparse matrix} of shape \
+                (n_samples_new, n_features)
+            The array containing the resampled data.
+
+        y_resampled : array-like of shape (n_samples_new,)
+            The corresponding label of `X_resampled`.
+        """
+
+
+        output = self._fit_resample(X, y)
+        X_,y_=output[0],output[1]
+        return (X_, y_) if len(output) == 2 else (X_, y_, output[2])
 
     def _fit_resample(self, X, y=None, n_final_sample=None):
         """
         if y=None, all points are considered positive, and oversampling on all X
         if n_final_sample=None, objective is balanced data.
         """
+         
+    
 
         if y is None:
             X_positifs = X
@@ -394,6 +421,7 @@ class WMGS_NC_cov(BaseOverSampler):
         n_minoritaire = X_positifs.shape[0]
         dimension_continuous = X_positifs.shape[1]  ## of continuous features
 
+        
         enc = OneHotEncoder(handle_unknown="ignore")  ## encoding
         X_positifs_categorical_enc = enc.fit_transform(
             X_positifs_categorical
@@ -414,6 +442,7 @@ class WMGS_NC_cov(BaseOverSampler):
             X=X_positifs_all_features_enc, n_neighbors=self.K + 1, return_distance=True
         )
         n_synthetic_sample = n_final_sample - n_minoritaire
+        np.random.seed(self.random_state)
         
         if self.mucentered:
             # We sample from mean of neighbors
@@ -506,50 +535,50 @@ class WMGS_NC_cov(BaseOverSampler):
                         "Available values : 'EmpCov','InvWeightCov','LWCov','OASCov','TraceCov','IdCov','ExpCov' "
                     )
             
-        np.random.seed(self.random_state)
         # sampling all new points
         # u = np.random.normal(loc=0, scale=1, size=(len(indices), dimension))
         # new_samples = [mus[central_point] + As[central_point].dot(u[central_point]) for i in indices]
         indices = np.random.randint(n_minoritaire, size=n_synthetic_sample)
         new_samples = np.zeros((n_synthetic_sample, dimension_continuous))
+        new_samples_cat = np.zeros(
+            (n_synthetic_sample, len(self.categorical_features)), dtype=object
+        )
         for i, central_point in enumerate(indices):
             u = np.random.normal(loc=0, scale=1, size=dimension_continuous)
             new_observation = mus[central_point, :] + As[central_point].dot(u)
             new_samples[i, :] = new_observation
             ############### CATEGORICAL ##################
-        new_samples_cat = np.zeros(
-            (n_synthetic_sample, len(self.categorical_features)), dtype=object
-        )
-        for i in range(n_synthetic_sample):
-            indice = np.random.randint(n_minoritaire)
-            indices_neigh = [
-                0
-            ]  ## the central point is selected for the expectation and covariance matrix
+        #for i in range(n_synthetic_sample):
+            #indice = central_point
+            indices_neigh = []## the central point is NOT selected for the construction of the categorical features (votes)
             indices_neigh.extend(
-                random.sample(range(1, self.K + 1), self.n_points)
+                np.random.choice(a=range(1, self.K + 1),size=self.n_points,replace=False)
             )  # The nearrest neighbor selected for the estimation
-            indice_neighbors = neighbor_by_index[indice][indices_neigh]
+            indice_neighbors = neighbor_by_index[central_point][indices_neigh]
 
             if (
                 self.version == 1
             ):  ## the most common occurence is chosen per categorical feature
                 for cat_feature in range(len(self.categorical_features)):
+                    list_neigh_value = np.random.permutation(X_positifs_categorical[indice_neighbors, cat_feature]) ## We randomly permute because Counter select the first seen in case of tie
                     most_common = Counter(
-                        X_positifs_categorical[indice_neighbors, cat_feature]
+                        list_neigh_value
                     ).most_common(1)[0][0]
                     new_samples_cat[i, cat_feature] = most_common
             elif (
                 self.version == 2
             ):  ## sampling of one of the nearest neighbors per categorical feature
                 for cat_feature in range(len(self.categorical_features)):
-                    new_samples_cat[i, cat_feature] = np.random.choice(
+                    selected_one = np.random.choice(
                         X_positifs_categorical[indice_neighbors, cat_feature],
                         replace=False,
                     )
+                    new_samples_cat[i, cat_feature] = selected_one
             elif (
                 self.version == 3
             ):  ## sampling of one of the nearest neighbors per categorical feature using dsitance
                 #### We take the nn of the central point. The latter is excluded
+                print("Version 3")
                 epsilon_weigths_sampling = 10e-6
                 indice_neighbors_without_0 = np.arange(
                     start=1, stop=self.K + 1, dtype=int
@@ -562,14 +591,14 @@ class WMGS_NC_cov(BaseOverSampler):
                             (
                                 1
                                 / (
-                                    neighbor_by_dist[indice][indice_neighbors_without_0]
+                                    neighbor_by_dist[central_point][indice_neighbors_without_0]
                                     + epsilon_weigths_sampling
                                 )
                             )
                             / (
                                 1
                                 / (
-                                    neighbor_by_dist[indice][indice_neighbors_without_0]
+                                    neighbor_by_dist[central_point][indice_neighbors_without_0]
                                     + epsilon_weigths_sampling
                                 )
                             ).sum()
@@ -579,7 +608,7 @@ class WMGS_NC_cov(BaseOverSampler):
                 raise ValueError(
                     "Selected version not allowed " "Please chose an existing version"
                 )
-        np.random.seed()
+        
 
         ##### END ######
         new_samples_final = np.zeros(
@@ -606,12 +635,11 @@ class WMGS_NC_cov(BaseOverSampler):
         oversampled_y = np.hstack(
             (np.full(len(X_negatifs), 0), np.full((n_final_sample,), 1))
         )
+        np.random.seed()
 
         return oversampled_X, oversampled_y
     
 
-
-from sklearn.covariance import ledoit_wolf,oas,empirical_covariance
 class MultiOutPutClassifier_and_MGS(BaseOverSampler):
     """
     MultiOutPutClassifier and MGS
@@ -623,7 +651,7 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
         categorical_features,
         Classifier,
         kind_sampling='cholesky',
-        kind_cov = 'Emp',
+        kind_cov = 'EmpCov',
         mucentered=True,
         to_encode=False,
         to_encode_onehot=False,
@@ -635,6 +663,7 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
         bool_rf=False,
         bool_rf_regressor=False,
         bool_drfsk_regressor=False,
+        fit_nn_on_continuous_only=True,
     ):
         """
         llambda is a float.
@@ -658,6 +687,7 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
         self.bool_rf_regressor =bool_rf_regressor ##Perform special predictt of RFRegressor in when to_encode_onehot=True
         self.bool_drfsk_regressor = bool_drfsk_regressor
         self.bool_drf=bool_drf
+        self.fit_nn_on_continuous_only = fit_nn_on_continuous_only
         
 
     def _check_X_y(self, X, y):
@@ -678,7 +708,7 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
                 "features. It requires some categorical features."
             )
 
-    def fit_resample(self, X, y,scaler=None):  # Necessary only for SemiOracle
+    def fit_resample(self, X, y,scaler=None):  # scaler Necessary only for SemiOracle
         """Resample the dataset.
 
         Parameters
@@ -784,11 +814,35 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
 
 
         ######### CONTINUOUS ################
-        neigh = NearestNeighbors(n_neighbors=self.K, algorithm="ball_tree")
-        neigh.fit(X_positifs)
-        neighbor_by_index = neigh.kneighbors(
-            X=X_positifs, n_neighbors=self.K + 1, return_distance=False
-        )
+        
+        if self.fit_nn_on_continuous_only: # We fit the nn estimator only on the continuous features
+            neigh = NearestNeighbors(n_neighbors=self.K, algorithm="ball_tree")
+            neigh.fit(X_positifs)
+            neighbor_by_index = neigh.kneighbors(
+                X=X_positifs, n_neighbors=self.K + 1, return_distance=False
+            )
+        else: # We fit the nn estimator on the continuous features and add the mean (NC like).
+            enc = OneHotEncoder(handle_unknown="ignore")  ## encoding
+            X_positifs_categorical_enc = enc.fit_transform(
+                X_positifs_categorical
+            ).toarray()
+            X_positifs_all_features_enc = np.hstack((X_positifs,X_positifs_categorical_enc))
+            cste_med = np.median(
+                np.sqrt(np.var(X_positifs, axis=0))
+            )  ## med constante from continuous variables
+            if not math.isclose(cste_med, 0):
+                X_positifs_all_features_enc[:, dimension_continuous:] = cste_med / np.sqrt(
+                    2
+                )  # With one-hot encoding, the median will be repeated twice. We need
+            # to divide by sqrt(2) such that we only have one median value
+            # contributing to the Euclidean distance
+            neigh = NearestNeighbors(n_neighbors=self.K, algorithm="ball_tree")
+            neigh.fit(X_positifs_all_features_enc)
+            neighbor_by_index = neigh.kneighbors(
+                X=X_positifs_all_features_enc, n_neighbors=self.K + 1, return_distance=False
+            )
+
+
         n_synthetic_sample = n_final_sample - n_minoritaire
         if self.mucentered:
             # We sample from mean of neighbors
