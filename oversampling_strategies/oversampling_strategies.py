@@ -661,6 +661,7 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
         random_state=None,
         bool_drf=False,
         bool_rf=False,
+        bool_rf_str=False,
         bool_rf_regressor=False,
         bool_drfsk_regressor=False,
         fit_nn_on_continuous_only=True,
@@ -684,6 +685,7 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
         self.to_encode = to_encode ## encode categorical Z vector with ordinal encoding
         self.to_encode_onehot = to_encode_onehot ## encode categorical Z vector with one hot encoding
         self.bool_rf = bool_rf ## Perform special predictt of RFClassifier when to_encode_onehot=True
+        self.bool_rf_str = bool_rf_str ## Do not use with encoding
         self.bool_rf_regressor =bool_rf_regressor ##Perform special predictt of RFRegressor in when to_encode_onehot=True
         self.bool_drfsk_regressor = bool_drfsk_regressor
         self.bool_drf=bool_drf
@@ -707,8 +709,11 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
                 "MultiOutPutClassifier_and_MGS is not designed to work only with numerical "
                 "features. It requires some categorical features."
             )
-
-    def fit_resample(self, X, y,scaler=None):  # scaler Necessary only for SemiOracle
+        
+    def array_of_lists_to_array(self,arr): ## Used when calling fit_resampl with  bool_rf_str=True
+        return np.apply_along_axis(lambda a: np.array(a[0]), -1, arr[..., None])
+    
+    def fit_resample(self, X, y,to_return_classifier=False,scaler=None):  # scaler Necessary only for SemiOracle
         """Resample the dataset.
 
         Parameters
@@ -731,14 +736,20 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
         """
 
         if scaler is None:
-            output = self._fit_resample(X, y)
+            output = self._fit_resample(X, y,to_return_classifier=to_return_classifier)
         else:
             output = self._fit_resample(X, y,scaler=scaler)
 
         X_,y_=output[0],output[1]
-        return (X_, y_) if len(output) == 2 else (X_, y_, output[2])
+        if len(output) == 2:
+            return (X_, y_) 
+        elif len(output) == 3:
+            return (X_, y_, output[2])
+        else:
+            return (X_, y_, output[2],output[3])
+        #return (X_, y_) if len(output) == 2 else (X_, y_, output[2])
 
-    def _fit_resample(self, X, y=None,scaler=None, n_final_sample=None):
+    def _fit_resample(self, X, y=None,to_return_classifier=False,scaler=None, n_final_sample=None):
         """
         if y=None, all points are considered positive, and oversampling on all X
         if n_final_sample=None, objective is balanced data.
@@ -802,6 +813,16 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
                 self.Classifier.fit(
                     X_positifs, X_positifs_categorical
                 )  # learn on continuous features in order to predict categorical features
+
+            elif self.bool_rf_str : #case RFc on the concatenated strings modalities
+                #type_cat = X_positifs_categorical.astype(str).dtype
+                sep_array = np.full((n_minoritaire,len(self.categorical_features)-1),',',dtype=str)
+                sep_array = np.hstack((sep_array,np.full((n_minoritaire,1),'',dtype=str))) # We do not want an comma after the last modality
+                X_positifs_categorical_str= np.char.add(X_positifs_categorical.astype(str),sep_array) # We add commas at the end of each mdality
+                X_positifs_categorical_str = X_positifs_categorical_str.astype(object).sum(axis=1) # We concatenate by row the modalities 
+                self.Classifier.fit(
+                    X_positifs, X_positifs_categorical_str
+                )  # learn on continuous features in order to predict categorical features combinasion concatenated
 
             elif len(self.categorical_features)==1: # ravel in case of one categorical freatures
                 self.Classifier.fit(
@@ -953,23 +974,47 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
             new_samples_cat = sample
 
         if self.bool_rf and self.to_encode_onehot:
-            categories_onehot = onehot_encoder.categories_
-            new_samples_cat_probas_all = self.Classifier.predict_proba(new_samples) # list of pred_probas for each categorical one hot encoded.
-            new_samples_cat_probas  = new_samples_cat_probas_all[0][:,1].reshape(-1,1)
-            for i in range(1,len(onehot_encoder.get_feature_names_out())):
-                new_samples_cat_probas = np.hstack((new_samples_cat_probas,new_samples_cat_probas_all[i][:,1].reshape(-1,1)))
-            new_samples_cat = np.zeros((new_samples_cat_probas.shape[0],new_samples_cat_probas.shape[1]))
-            start_idx = 0
-            for i in range(len(categories_onehot)):
-                curr_n_modalities = len(categories_onehot[i])
-                indices_argmax = np.argmax(new_samples_cat_probas[:,start_idx:(start_idx+curr_n_modalities)],axis=1) 
-                indices_argmax = start_idx + indices_argmax
-                new_samples_cat[np.arange(len(new_samples_cat)),indices_argmax] = 1
-                start_idx = curr_n_modalities
-        elif (self.bool_rf_regressor  or self.bool_drfsk_regressor) and self.to_encode_onehot:
+            new_samples_cat = self.Classifier.predict(new_samples)
+            #categories_onehot = onehot_encoder.categories_
+            #new_samples_cat_probas_all = self.Classifier.predict_proba(new_samples) # list of pred_probas for each categorical one hot encoded.
+            #new_samples_cat_probas  = new_samples_cat_probas_all[0][:,1].reshape(-1,1)
+            #print('new_samples_cat_probas_all : ', new_samples_cat_probas_all)
+            #print('new_samples_cat_probas : ', new_samples_cat_probas)
+            #for i in range(1,len(onehot_encoder.get_feature_names_out())):
+            #    new_samples_cat_probas = np.hstack((new_samples_cat_probas,new_samples_cat_probas_all[i][:,1].reshape(-1,1)))
+            #new_samples_cat = np.zeros((new_samples_cat_probas.shape[0],new_samples_cat_probas.shape[1]))
+            #start_idx = 0
+            #for i in range(len(categories_onehot)):
+            #    curr_n_modalities = len(categories_onehot[i])
+            #    indices_argmax = np.argmax(new_samples_cat_probas[:,start_idx:(start_idx+curr_n_modalities)],axis=1) 
+            #    indices_argmax = start_idx + indices_argmax
+            #    new_samples_cat[np.arange(len(new_samples_cat)),indices_argmax] = 1
+            #    start_idx = curr_n_modalities
+        elif self.bool_rf_str:
+            if self.to_encode_onehot:
+                raise ValueError(
+                        "Cannot apply bool_rf_str=True with to_encode_onehot=True"
+                    )
+            new_samples_cat = self.Classifier.predict(new_samples)
+            new_samples_cat = np.char.split(new_samples_cat.astype(str),sep=',') ## We split the predictions
+            new_samples_cat = self.array_of_lists_to_array(new_samples_cat) ## We get back the right shape for categorical features array
+
+        elif self.bool_drfsk_regressor and self.to_encode_onehot:
+            new_samples_cat_pred= self.Classifier.predict(new_samples) # list of  pred for each categorical one hot encoded.
+            new_samples_cat = var_scaler_cat.inverse_transform(new_samples_cat_pred)
+        elif self.bool_rf_regressor and self.to_encode_onehot:
             categories_onehot = onehot_encoder.categories_
             new_samples_cat_pred= self.Classifier.predict(new_samples) # list of  pred for each categorical one hot encoded.
-            new_samples_cat_pred_probas = var_scaler_cat.inverse_transform(new_samples_cat_pred)
+            #print('new_samples_cat_pred : ', new_samples_cat_pred)
+            #new_samples_cat_pred_probas = var_scaler_cat.inverse_transform(new_samples_cat_pred)
+            #print('new_samples_cat_pred_probas  : ', new_samples_cat_pred_probas)
+            array_pred_by_tree = np.zeros((len(self.Classifier.estimators_),new_samples_cat_pred.shape[0],new_samples_cat_pred.shape[1]))
+            for t,tree in enumerate(self.Classifier.estimators_):
+                curr_tree_pred = tree.predict(new_samples)
+                curr_tree_pred = var_scaler_cat.inverse_transform(curr_tree_pred)
+                array_pred_by_tree[t,:,:] = curr_tree_pred
+            new_samples_cat_pred_probas = np.mean(array_pred_by_tree,axis=0)
+
             new_samples_cat = np.zeros((new_samples_cat_pred_probas.shape[0],new_samples_cat_pred_probas.shape[1]))
             start_idx = 0
             for i in range(len(categories_onehot)):
@@ -977,7 +1022,8 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
                 indices_argmax = np.argmax(new_samples_cat_pred_probas[:,start_idx:(start_idx+curr_n_modalities)],axis=1) 
                 indices_argmax = start_idx + indices_argmax
                 new_samples_cat[np.arange(len(new_samples_cat)),indices_argmax] = 1
-                start_idx = curr_n_modalities
+                start_idx = curr_n_modalities     
+
         elif len(self.categorical_features)==1:# Ravel in case of one categorical freatures
             if scaler is None: 
                 new_samples_cat = self.Classifier.predict(new_samples).reshape(-1,1)
@@ -992,9 +1038,9 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
         ##### END ######
         
         if self.to_encode:
-            new_samples_cat = ord_encoder.inverse_transform(new_samples_cat.astype(int))
+            new_samples_cat = ord_encoder.inverse_transform(new_samples_cat)
         elif self.to_encode_onehot:
-            new_samples_cat = onehot_encoder.inverse_transform(new_samples_cat.astype(int))
+            new_samples_cat = onehot_encoder.inverse_transform(new_samples_cat)
             
         new_samples_final = np.zeros(
             (n_synthetic_sample, X_positifs_all_features.shape[1]), dtype=object
@@ -1022,7 +1068,13 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
             (np.full(len(X_negatifs), 0), np.full((n_final_sample,), 1))
         )
 
-        return oversampled_X, oversampled_y
+        if to_return_classifier:
+            if self.to_encode_onehot:
+                return oversampled_X, oversampled_y, self.Classifier, onehot_encoder
+            else:
+                return oversampled_X, oversampled_y,self.Classifier
+        else:
+            return oversampled_X, oversampled_y
     
 
 
@@ -1116,7 +1168,7 @@ class DrfSk(RandomForestClassifier):
         #weights_all = np.apply_along_axis(self.get_weights,0,X,{'self':self})
         size_train = len(self.trained_X)
         list_index_train_X = np.arange(start=0,stop=size_train,step=1)
-        y_pred = np.zeros((len(X),self.trained_y.shape[1]))
+        y_pred = np.zeros((len(X),self.trained_y.shape[1]),dtype=self.trained_y.dtype)
         for i in range(len(X)):
             x = X[i,:].reshape(1, -1)
             w = self.get_weights(x)
