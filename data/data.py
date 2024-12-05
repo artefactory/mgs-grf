@@ -618,6 +618,22 @@ def load_TelcoChurn_data():
 
     return X_telco, y_telco
 
+def load_census_data():
+    """
+    Load BankChurners data set from UCI Irvine.
+    """
+    # fetch dataset
+    census_income = fetch_ucirepo(id=20)
+    # data (as pandas dataframes)
+    X = census_income.data.features
+    y = census_income.data.targets
+
+    X.fillna("unknow", inplace=True)  # fillna
+    y.replace({"income": {'>50K': 1,'>50K.':1, '<=50K': 0, '<=50K.':0}}, inplace=True)
+    X = X.to_numpy()
+    y = y.to_numpy().ravel()
+    return X, y
+
 
 def decode_one_hot(row,columns):
     """
@@ -1008,7 +1024,7 @@ def generate_initial_data_twocat_lgbm5_old(dimension,n_samples,random_state=123,
     return X_final,target,target_numeric
 
 
-def generate_initial_data_twocat_lgbm5(dimension,n_samples,random_state=123,verbose=0):
+def generate_initial_data_twocat_lgbm5_oldcoeffes(dimension,n_samples,random_state=123,verbose=0):
     np.random.seed(random_state)
     Xf = np.random.uniform(low=0,high=1,size=(n_samples,1))
     for i in range(dimension-7):
@@ -1043,6 +1059,104 @@ def generate_initial_data_twocat_lgbm5(dimension,n_samples,random_state=123,verb
     target,target_numeric = generate_synthetic_features_logreg(X=X_final_enc,index_informatives=list_index_informatives,list_modalities=['No','Yes'],
                                                 beta=beta,treshold=0.5,intercept=-1.9 # intercept=-3
                                                                )
+    #print('target_numeric.shape',target_numeric.shape)
+    #print('target_numeric', target_numeric)
+    
+    first_cat_feature = np.array([z_feature_cat_uniform[i][0] for i in range(n_samples) ])
+    second_cat_feature = np.array([z_feature_cat_uniform[i][1] for i in range(n_samples) ])
+    X_final = np.hstack((Xf,first_cat_feature.reshape(-1,1),second_cat_feature.reshape(-1,1)))
+    
+    if verbose==0:
+        print('Composition of the target ', Counter(target_numeric))
+        print('Composition of categorical feature : ', Counter(z_feature_cat_uniform))
+    #return X_final,target,target_numeric
+    return X_final,target,target_numeric
+
+def generate_initial_data_twocat_lgbm5_19_11_2024(dimension,n_samples,random_state=123,verbose=0):
+    np.random.seed(random_state)
+    Xf = np.random.uniform(low=0,high=1,size=(n_samples,1))
+    for i in range(dimension-7):
+        np.random.seed(seed=random_state+i+1)
+        curr_covariate = np.random.uniform(low=0,high=1,size=(n_samples,1))
+        Xf = np.hstack((Xf,curr_covariate))
+    ### Feature categorical
+        
+    z_feature_cat_uniform, z_feature_cat_uniform_numeric = generate_synthetic_features_multinomial_nonuple(
+        X=Xf,index_informatives=[0,1,2],list_modalities=['Ae','Bd','Af','Ce','Ad','Be','Bf','Cd','Cf'],beta1=np.array([1,3,2]),
+        beta2=np.array([4,-7,3]),beta3=np.array([5,-1,6]),beta4=np.array([3,2,1]),beta5=np.array([2,5,1]),
+        beta6=np.array([3,2,8]),beta7=np.array([7,6,6]),beta8=np.array([1,3,1]),beta9=np.array([1,1,9]),intercept=-2
+    )
+    #print('z_feature_cat_uniform shape :',z_feature_cat_uniform_numeric.shape)
+    
+    enc = OneHotEncoder(handle_unknown='ignore',sparse_output=False)
+    X_final_cat_enc = enc.fit_transform(z_feature_cat_uniform.reshape(-1, 1))
+    print(enc.get_feature_names_out())
+    X_final_enc = np.hstack((Xf,X_final_cat_enc))
+    
+    n_modalities = len(enc.get_feature_names_out())
+    list_index_informatives = [0,1,2]
+    list_index_informatives_cat = [-(i+1) for i in range(n_modalities)]
+    list_index_informatives_cat.reverse()
+    list_index_informatives.extend(list_index_informatives_cat)
+    print('list_index_informatives : ',list_index_informatives)
+    beta = [3,-5.1,-4,-8,-1.2,1.3,2.4,-8,-8,-9,-0.5,-10]
+    #print('list_index_informatives : ',list_index_informatives)
+    #print(beta[:(n_modalities+3)])
+    #print(X_final_enc[:,list_index_informatives].shape)
+
+    target,target_numeric = generate_synthetic_features_logreg(X=X_final_enc,index_informatives=list_index_informatives,list_modalities=['No','Yes'],
+                                                beta=beta,treshold=0.5,intercept=0.9 # intercept=-3
+                                                               )
+    #print('target_numeric.shape',target_numeric.shape)
+    #print('target_numeric', target_numeric)
+    
+    first_cat_feature = np.array([z_feature_cat_uniform[i][0] for i in range(n_samples) ])
+    second_cat_feature = np.array([z_feature_cat_uniform[i][1] for i in range(n_samples) ])
+    X_final = np.hstack((Xf,first_cat_feature.reshape(-1,1),second_cat_feature.reshape(-1,1)))
+    
+    if verbose==0:
+        print('Composition of the target ', Counter(target_numeric))
+        print('Composition of categorical feature : ', Counter(z_feature_cat_uniform))
+    #return X_final,target,target_numeric
+    return X_final,target,target_numeric
+
+
+def generate_initial_data_twocat_lgbm5(dimension_continuous,n_samples,random_state=123,verbose=0):
+    np.random.seed(random_state)
+    Xf = np.random.uniform(low=0,high=1,size=(n_samples,1))
+    for i in range(dimension_continuous-1):
+        np.random.seed(seed=random_state+i+1)
+        curr_covariate = np.random.uniform(low=0,high=1,size=(n_samples,1))
+        Xf = np.hstack((Xf,curr_covariate))
+    ### Feature categorical
+        
+    z_feature_cat_uniform, z_feature_cat_uniform_numeric = generate_synthetic_features_multinomial_nonuple(
+        X=Xf,index_informatives=[0,1,2],list_modalities=['Ae','Bd','Af','Ce','Ad','Be','Bf','Cd','Cf'],beta1=np.array([4.1,-1.1,10.7]),
+        beta2=np.array([4.3,-2.1,11.1]),beta3=np.array([4.8,-0.7,9.7]),beta4=np.array([5,-1,10]),beta5=np.array([-5,-1,10]),
+        beta6=np.array([-5,-1,10]),beta7=np.array([4.3,-2.1,11.1]),beta8=np.array([4.3,-2.1,11.1]),beta9=np.array([1,1,9]),intercept=2
+    )
+    #print('z_feature_cat_uniform shape :',z_feature_cat_uniform_numeric.shape)
+    
+    enc = OneHotEncoder(handle_unknown='ignore',sparse_output=False)
+    X_final_cat_enc = enc.fit_transform(z_feature_cat_uniform.reshape(-1, 1))
+    print(enc.get_feature_names_out())
+    X_final_enc = np.hstack((Xf,X_final_cat_enc))
+    
+    n_modalities = len(enc.get_feature_names_out())
+    list_index_informatives = [0,1,2]
+    list_index_informatives_cat = [-(i+1) for i in range(n_modalities)]
+    list_index_informatives_cat.reverse()
+    list_index_informatives.extend(list_index_informatives_cat)
+    print('list_index_informatives : ',list_index_informatives)
+    beta = [8,-10.1,-9,-11.3,-10.2,1.3,1.8,-11.8,-12.2,-10.7,0.9,-12]
+    #print('list_index_informatives : ',list_index_informatives)
+    #print(beta[:(n_modalities+3)])
+    #print(X_final_enc[:,list_index_informatives].shape)
+
+    target,target_numeric = generate_synthetic_features_logreg(X=X_final_enc,index_informatives=list_index_informatives,list_modalities=['No','Yes'],
+                                                beta=beta,treshold=0.5,intercept=0.5 # intercept=-3
+                                                               )
+    
     #print('target_numeric.shape',target_numeric.shape)
     #print('target_numeric', target_numeric)
     
