@@ -11,6 +11,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.covariance import ledoit_wolf,oas,empirical_covariance
 from imblearn.utils import check_target_type
 from collections import Counter
+from collections import namedtuple ## KNN
 
 class NoSampling(object):
     """
@@ -24,6 +25,24 @@ class NoSampling(object):
         """
         return X, y
 
+
+ModeResult = namedtuple('ModeResult', ('mode', 'count'))
+def mode_rand(a, axis):
+    in_dims = list(range(a.ndim))
+    a_view = np.transpose(a, in_dims[:axis] + in_dims[axis+1:] + [axis])
+
+    inds = np.ndindex(a_view.shape[:-1])
+    modes = np.empty(a_view.shape[:-1], dtype=a.dtype)
+    counts = np.zeros(a_view.shape[:-1], dtype=int)
+
+    for ind in inds:
+        vals, cnts = np.unique(a_view[ind], return_counts=True)
+        maxes = np.where(cnts == cnts.max())  # Here's the change
+        modes[ind], counts[ind] = vals[np.random.choice(maxes[0])], cnts.max()
+
+    newshape = list(a.shape)
+    newshape[axis] = 1
+    return ModeResult(modes.reshape(newshape), counts.reshape(newshape))
 
 ##########################################
 ######## CATEGORICAL #####################
@@ -275,21 +294,19 @@ class WMGS_NC_cov(BaseOverSampler):
             ############### CATEGORICAL ##################
         #for i in range(n_synthetic_sample):
             #indice = central_point
-            indices_neigh = []## the central point is NOT selected for the construction of the categorical features (votes)
-            indices_neigh.extend(
-                np.random.choice(a=range(1, self.K + 1),size=self.n_points,replace=False)
-            )  # The nearrest neighbor selected for the estimation
+            #indices_neigh = []## the central point is NOT selected for the construction of the categorical features (votes)
+            #indices_neigh.extend(
+            #    np.random.choice(a=range(1, self.K + 1),size=self.n_points,replace=False)
+            #)  # The nearrest neighbor selected for the estimation
+            indices_neigh = np.arange(1,self.K+1,1)
             indice_neighbors = neighbor_by_index[central_point][indices_neigh]
 
             if (
                 self.version == 1
             ):  ## the most common occurence is chosen per categorical feature
                 for cat_feature in range(len(self.categorical_features)):
-                    list_neigh_value = np.random.permutation(X_positifs_categorical[indice_neighbors, cat_feature]) ## We randomly permute because Counter select the first seen in case of tie
-                    most_common = Counter(
-                        list_neigh_value
-                    ).most_common(1)[0][0]
-                    new_samples_cat[i, cat_feature] = most_common
+                    most_common,_ = mode_rand(X_positifs_categorical[indice_neighbors, cat_feature].ravel(),axis=0)
+                    new_samples_cat[i, cat_feature] = most_common[0]
             elif (
                 self.version == 2
             ):  ## sampling of one of the nearest neighbors per categorical feature
@@ -800,9 +817,110 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
                 return oversampled_X, oversampled_y,self.Classifier
         else:
             return oversampled_X, oversampled_y
+
+
+from imblearn.over_sampling import SMOTENC
+from imblearn.utils._param_validation import HasMethods, StrOptions
+from sklearn.utils import (check_random_state)
+from scipy import sparse
+
+class SMOTENC2(SMOTENC):
+    _required_parameters = ["categorical_features"]
+
+    _parameter_constraints: dict = {
+        **SMOTE._parameter_constraints,
+        "categorical_features": ["array-like", StrOptions({"auto"})],
+        "categorical_encoder": [
+            HasMethods(["fit_transform", "inverse_transform"]),
+            None,
+        ],
+    }
+
+    def __init__(
+        self,
+        categorical_features,
+        *,
+        categorical_encoder=None,
+        sampling_strategy="auto",
+        random_state=None,
+        k_neighbors=5,
+        n_jobs=None,
+    ):
+        super(SMOTE,self).__init__(
+            sampling_strategy=sampling_strategy,
+            random_state=random_state,
+            k_neighbors=k_neighbors,
+            n_jobs=n_jobs,
+        )
+        self.categorical_features = categorical_features
+        self.categorical_encoder = categorical_encoder
     
+    def _generate_samples(self, X, nn_data, nn_num, rows, cols, steps, y_type, y=None):
+        """Generate a synthetic sample with an additional steps for the
+        categorical features.
 
+        Each new sample is generated the same way than in SMOTE. However, the
+        categorical features are mapped to the most frequent nearest neighbors
+        of the majority class.
+        """
+        rng = check_random_state(self.random_state)
+        X_new = super(SMOTE,self)._generate_samples(X, nn_data, nn_num, rows, cols, steps)
+        n_new_samples =X_new.shape[0]
+        # change in sparsity structure more efficient with LIL than CSR
+        X_new = X_new.tolil() if sparse.issparse(X_new) else X_new
 
+        # convert to dense array since scipy.sparse doesn't handle 3D
+        nn_data = nn_data.toarray() if sparse.issparse(nn_data) else nn_data
 
-    
+        # In the case that the median std was equal to zeros, we have to
+        # create non-null entry based on the encoded of OHE
+        if math.isclose(self.median_std_[y_type], 0):
+            nn_data[
+                :, self.continuous_features_.size :
+            ] = self._X_categorical_minority_encoded
 
+        all_neighbors = nn_data[nn_num[rows]]
+
+        categories_size = [self.continuous_features_.size] + [
+            cat.size for cat in self.categorical_encoder_.categories_
+        ]
+
+        for start_idx, end_idx in zip(
+            np.cumsum(categories_size)[:-1], np.cumsum(categories_size)[1:]
+        ):
+            col_maxs = all_neighbors[:, :, start_idx:end_idx].sum(axis=1)
+            # tie breaking argmax
+            #is_max = np.isclose(col_maxs, col_maxs.max(axis=1, keepdims=True))
+            #max_idxs = rng.permutation(np.argwhere(is_max))
+            #max_idxs = np.random.permutation(np.argwhere(is_max))
+            #xs, idx_sels = np.unique(max_idxs[:, 0], return_index=True)
+            #col_sels = max_idxs[idx_sels, 1]
+            col_sels = []
+            for i in range(n_new_samples):
+                sum_neigh =np.sum(all_neighbors[i, :, start_idx:end_idx],axis=0).ravel()
+                np.isclose(sum_neigh, sum_neigh.max())
+                ind_maxes = np.flatnonzero(sum_neigh == np.max(sum_neigh))
+                selected_col = np.random.choice(ind_maxes)
+                col_sels.append(selected_col)
+                #most_common,_ = mode_rand(all_neighbors[i, :, start_idx:end_idx],axis=0)
+                #print('all_neighbors : ', all_neighbors[i, :, start_idx:end_idx])
+                #print('most_common : ',most_common)
+                #selected_col=np.argmax(most_common[0]).ravel()[0]
+                #print('selected_col : ',selected_col)
+                #col_sels.append(selected_col)
+                #list_ind_col = np.argwhere(is_max[i,:]).ravel()
+                #n_mod = len(list_ind_col)
+
+                #if n_mod == 1:
+                #    col_sels.append(list_ind_col[0])
+                #else:
+                #    selected_col = np.random.choice(list_ind_col)
+                #    col_sels.append(selected_col)
+
+            col_sels = np.array(col_sels)
+            xs = np.arange(start=0,stop=n_new_samples,step=1)
+            ys = start_idx + col_sels
+            X_new[:, start_idx:end_idx] = 0
+            X_new[xs, ys] = 1
+            
+        return X_new
