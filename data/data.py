@@ -634,6 +634,24 @@ def load_census_data():
     y = y.to_numpy().ravel()
     return X, y
 
+def load_feedzai_data():
+    """
+    Load Base data set from data\dexternals folder
+    The name of the file shoulde be : Base.csv
+    """
+    filename = "Base.csv"
+    try:
+        df_feedzai = pd.read_csv(os.path.join(DATA_DIR, filename))
+    except FileNotFoundError:
+        raise FileNotFoundError(
+            f"""Pima dataset not found. It must be downloaded and
+                                placed in the folder {DATA_DIR} under the name {filename}"""
+        )
+
+    X_feedzai = df_feedzai.drop(["fraud_bool"], axis=1).to_numpy()
+    y_feedzai = df_feedzai[["fraud_bool"]].to_numpy().ravel()  # be consistent with X
+    return X_feedzai, y_feedzai
+
 
 def decode_one_hot(row,columns):
     """
