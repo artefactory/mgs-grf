@@ -9,11 +9,24 @@ from sklearn.utils.arrayfuncs import _all_with_any_reduction_axis_1
 from sklearn.utils.extmath import weighted_mode
 from sklearn.utils.validation import _num_samples, check_is_fitted
 from sklearn.metrics._pairwise_distances_reduction import ArgKminClassMode
-from sklearn.neighbors._base import _get_weights
+from sklearn.neighbors._base import _get_weights,NeighborsBase
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.utils._param_validation import StrOptions
 
 
 class DrfSk(RandomForestClassifier):
+    _parameter_constraints: dict = {
+        **ForestClassifier._parameter_constraints,
+        **DecisionTreeClassifier._parameter_constraints,
+        "class_weight": [
+            StrOptions({"balanced_subsample", "balanced"}),
+            dict,
+            list,
+            None,
+        ],
+    }
+    _parameter_constraints.pop("splitter")
+
     def __init__(
         self,
         n_estimators=100,
@@ -225,9 +238,13 @@ def mode_rand(a, axis):
     newshape[axis] = 1
     return ModeResult(modes.reshape(newshape), counts.reshape(newshape))
 
-
-
 class KNNTies(KNeighborsClassifier):
+    _parameter_constraints: dict = {**NeighborsBase._parameter_constraints}
+    _parameter_constraints.pop("radius")
+    _parameter_constraints.update(
+        {"weights": [StrOptions({"uniform", "distance"}), callable, None]}
+    )
+
     def __init__(self,
                   n_neighbors=5,
                   *,
@@ -240,6 +257,20 @@ class KNNTies(KNeighborsClassifier):
                   n_jobs=None,
                   ):
         super().__init__(n_neighbors, weights=weights, algorithm=algorithm, leaf_size=leaf_size, p=p, metric=metric, metric_params=metric_params, n_jobs=n_jobs)
+
+    def kneighbors(self, X=None, n_neighbors=None, return_distance=True):
+        if n_neighbors == None:
+            n_neighbors = self.n_neighbors +1
+        else:
+            n_neighbors = n_neighbors+1
+            
+        if return_distance:
+            neigh_dist, neigh_ind = super().kneighbors(X=X, n_neighbors=n_neighbors,return_distance=return_distance)
+            return neigh_dist[:,1:], neigh_ind[:,1:]
+        else:
+            neigh_ind = super().kneighbors(X=X, n_neighbors=n_neighbors,return_distance=return_distance)
+            return  neigh_ind[:,1:]
+        
     def predict(self, X):
         """Predict the class labels for the provided data.
 
