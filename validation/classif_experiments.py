@@ -296,7 +296,15 @@ def run_eval(
                 y_pred_probas = model.predict_proba(X_test[:,bool_mask])[:, 1]
             else:
                 y_pred_probas = model.predict_proba(X_test)[:, 1]
-
+            
+            if bool_to_save_data : ## We save the oversampled data of each oversampling strategy.
+                np.save(
+                    os.path.join(output_dir, "xres"+oversampling_name+name_file), X_res
+                    )
+                np.save(
+                    os.path.join(output_dir, "yres"+oversampling_name+name_file), y_res
+                    )
+        
             ######## Results are saved ###################
             list_all_preds[i + 1].extend(y_pred_probas)
             if i == 0:
@@ -320,7 +328,7 @@ def run_eval(
             os.path.join(output_dir, "xtrain" + name_file), X_train
             )
         np.save(
-            os.path.join(output_dir, "xres" + name_file), X_res
+            os.path.join(output_dir, "ytrain" + name_file), y_train
             )
 
 
