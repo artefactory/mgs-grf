@@ -198,8 +198,9 @@ def run_eval(
     # subsample_ratios=[0.2, 0.1, 0.01],
     # subsample_seeds=[11, 9, 5],
     to_standard_scale=True,
-    give_scaler=False,
     categorical_features=None,
+    bool_to_save_data = False,
+    give_scaler=False,
     to_fit_on_all_and_pred_on_continuous=False
 ):
     """
@@ -314,6 +315,13 @@ def run_eval(
     np.save(
         os.path.join(output_dir, "name_strats" + name_file), list_names_oversamplings
     )
+    if bool_to_save_data: ## Use it with train test split (1 fold)
+        np.save(
+            os.path.join(output_dir, "xtrain" + name_file), X_train
+            )
+        np.save(
+            os.path.join(output_dir, "xres" + name_file), X_res
+            )
 
 
 def compute_metrics(output_dir, name_file, list_metric,n_fold=5):
