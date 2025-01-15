@@ -175,9 +175,8 @@ class WMGS_NC_cov(BaseOverSampler):
             np.sqrt(np.var(X_positifs, axis=0))
         )  ## med constante from continuous variables
         if not math.isclose(cste_med, 0):
-            X_positifs_all_features_enc[:, dimension_continuous:] = cste_med / np.sqrt(
-                2
-            )  # With one-hot encoding, the median will be repeated twice. We need
+            X_positifs_all_features_enc[:, dimension_continuous:] =  X_positifs_all_features_enc[:, dimension_continuous:] * (cste_med / np.sqrt(2))  
+            # With one-hot encoding, the median will be repeated twice. We need
         # to divide by sqrt(2) such that we only have one median value
         # contributing to the Euclidean distance
         neigh = NearestNeighbors(n_neighbors=self.K, algorithm="ball_tree")
@@ -292,12 +291,6 @@ class WMGS_NC_cov(BaseOverSampler):
             new_observation = mus[central_point, :] + As[central_point].dot(u)
             new_samples[i, :] = new_observation
             ############### CATEGORICAL ##################
-        #for i in range(n_synthetic_sample):
-            #indice = central_point
-            #indices_neigh = []## the central point is NOT selected for the construction of the categorical features (votes)
-            #indices_neigh.extend(
-            #    np.random.choice(a=range(1, self.K + 1),size=self.n_points,replace=False)
-            #)  # The nearrest neighbor selected for the estimation
             indices_neigh = np.arange(1,self.K+1,1)
             indice_neighbors = neighbor_by_index[central_point][indices_neigh]
 
@@ -307,6 +300,10 @@ class WMGS_NC_cov(BaseOverSampler):
                 for cat_feature in range(len(self.categorical_features)):
                     most_common,_ = mode_rand(X_positifs_categorical[indice_neighbors, cat_feature].ravel(),axis=0)
                     new_samples_cat[i, cat_feature] = most_common[0]
+                    #vals, cnts = np.unique(X_positifs_categorical[indice_neighbors, cat_feature].ravel(), return_counts=True)
+                    #ind_maxes = np.flatnonzero(cnts == np.max(cnts))
+                    #selected_ind = np.random.choice(ind_maxes)
+                    #new_samples_cat[i, cat_feature] = vals[selected_ind]
             elif (
                 self.version == 2
             ):  ## sampling of one of the nearest neighbors per categorical feature
@@ -550,30 +547,25 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
             self.Classifier.fit(
                 X_positifs, X_positifs_categorical_encoded
             )  # learn on continuous features in order to predict categorical feature
+
+        elif self.bool_rf_str : #case RFc on the concatenated strings modalities
+            #type_cat = X_positifs_categorical.astype(str).dtype
+            sep_array = np.full((n_minoritaire,len(self.categorical_features)-1),',',dtype=str)
+            sep_array = np.hstack((sep_array,np.full((n_minoritaire,1),'',dtype=str))) # We do not want an comma after the last modality
+            X_positifs_categorical_str= np.char.add(X_positifs_categorical.astype(str),sep_array) # We add commas at the end of each mdality
+            X_positifs_categorical_str = X_positifs_categorical_str.astype(object).sum(axis=1) # We concatenate by row the modalities 
+            self.Classifier.fit(
+                X_positifs, X_positifs_categorical_str
+            )  # learn on continuous features in order to predict categorical features combinasion concatenated
+
+        elif len(self.categorical_features)==1: # ravel in case of one categorical freatures
+            self.Classifier.fit(
+                X_positifs, X_positifs_categorical.ravel().astype(str)
+            )  # learn on continuous features in order to predict categorical features
         else:
-            if self.bool_drf:
-                self.Classifier.fit(
-                    X_positifs, X_positifs_categorical
-                )  # learn on continuous features in order to predict categorical features
-
-            elif self.bool_rf_str : #case RFc on the concatenated strings modalities
-                #type_cat = X_positifs_categorical.astype(str).dtype
-                sep_array = np.full((n_minoritaire,len(self.categorical_features)-1),',',dtype=str)
-                sep_array = np.hstack((sep_array,np.full((n_minoritaire,1),'',dtype=str))) # We do not want an comma after the last modality
-                X_positifs_categorical_str= np.char.add(X_positifs_categorical.astype(str),sep_array) # We add commas at the end of each mdality
-                X_positifs_categorical_str = X_positifs_categorical_str.astype(object).sum(axis=1) # We concatenate by row the modalities 
-                self.Classifier.fit(
-                    X_positifs, X_positifs_categorical_str
-                )  # learn on continuous features in order to predict categorical features combinasion concatenated
-
-            elif len(self.categorical_features)==1: # ravel in case of one categorical freatures
-                self.Classifier.fit(
-                    X_positifs, X_positifs_categorical.ravel().astype(str)
-                )  # learn on continuous features in order to predict categorical features
-            else:
-                self.Classifier.fit(
-                    X_positifs, X_positifs_categorical.astype(str)
-                )  # learn on continuous features in order to predict categorical features
+            self.Classifier.fit(
+                X_positifs, X_positifs_categorical.astype(str)
+            )  # learn on continuous features in order to predict categorical features
 
 
         ######### CONTINUOUS ################
@@ -594,9 +586,8 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
                 np.sqrt(np.var(X_positifs, axis=0))
             )  ## med constante from continuous variables
             if not math.isclose(cste_med, 0):
-                X_positifs_all_features_enc[:, dimension_continuous:] = cste_med / np.sqrt(
-                    2
-                )  # With one-hot encoding, the median will be repeated twice. We need
+                X_positifs_all_features_enc[:, dimension_continuous:] =  X_positifs_all_features_enc[:, dimension_continuous:] * (cste_med / np.sqrt(2)) 
+                  # With one-hot encoding, the median will be repeated twice. We need
             # to divide by sqrt(2) such that we only have one median value
             # contributing to the Euclidean distance
             neigh = NearestNeighbors(n_neighbors=self.K, algorithm="ball_tree")
@@ -715,23 +706,9 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
                 sample[i,:] = out.y[ids,:]
             new_samples_cat = sample
 
-        if self.bool_rf and self.to_encode_onehot:
+        elif self.bool_rf and self.to_encode_onehot:
             new_samples_cat = self.Classifier.predict(new_samples)
-            #categories_onehot = onehot_encoder.categories_
-            #new_samples_cat_probas_all = self.Classifier.predict_proba(new_samples) # list of pred_probas for each categorical one hot encoded.
-            #new_samples_cat_probas  = new_samples_cat_probas_all[0][:,1].reshape(-1,1)
-            #print('new_samples_cat_probas_all : ', new_samples_cat_probas_all)
-            #print('new_samples_cat_probas : ', new_samples_cat_probas)
-            #for i in range(1,len(onehot_encoder.get_feature_names_out())):
-            #    new_samples_cat_probas = np.hstack((new_samples_cat_probas,new_samples_cat_probas_all[i][:,1].reshape(-1,1)))
-            #new_samples_cat = np.zeros((new_samples_cat_probas.shape[0],new_samples_cat_probas.shape[1]))
-            #start_idx = 0
-            #for i in range(len(categories_onehot)):
-            #    curr_n_modalities = len(categories_onehot[i])
-            #    indices_argmax = np.argmax(new_samples_cat_probas[:,start_idx:(start_idx+curr_n_modalities)],axis=1) 
-            #    indices_argmax = start_idx + indices_argmax
-            #    new_samples_cat[np.arange(len(new_samples_cat)),indices_argmax] = 1
-            #    start_idx = curr_n_modalities
+
         elif self.bool_rf_str:
             if self.to_encode_onehot:
                 raise ValueError(
@@ -747,9 +724,6 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
         elif self.bool_rf_regressor and self.to_encode_onehot:
             categories_onehot = onehot_encoder.categories_
             new_samples_cat_pred= self.Classifier.predict(new_samples) # list of  pred for each categorical one hot encoded.
-            #print('new_samples_cat_pred : ', new_samples_cat_pred)
-            #new_samples_cat_pred_probas = var_scaler_cat.inverse_transform(new_samples_cat_pred)
-            #print('new_samples_cat_pred_probas  : ', new_samples_cat_pred_probas)
             array_pred_by_tree = np.zeros((len(self.Classifier.estimators_),new_samples_cat_pred.shape[0],new_samples_cat_pred.shape[1]))
             for t,tree in enumerate(self.Classifier.estimators_):
                 curr_tree_pred = tree.predict(new_samples)
@@ -778,7 +752,7 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
                  new_samples_cat = self.Classifier.predict(new_samples,scaler=scaler)  
         np.random.seed()
         ##### END ######
-        
+
         if self.to_encode:
             new_samples_cat = ord_encoder.inverse_transform(new_samples_cat)
         elif self.to_encode_onehot:
@@ -789,7 +763,6 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
         )
         new_samples_final[:, bool_mask] = new_samples
         new_samples_final[:, ~bool_mask] = new_samples_cat
-        # new_samples_final = np.concatenate((new_samples,new_samples_cat), axis=1)
 
         X_positifs_final = np.zeros(
             (len(X_positifs), X_positifs_all_features.shape[1]), dtype=object
