@@ -10,8 +10,7 @@ from sklearn.metrics import auc
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import roc_auc_score
 
-from sklearn.metrics import (roc_curve,auc,precision_recall_curve,roc_auc_score)
-from sklearn.metrics import PrecisionRecallDisplay,RocCurveDisplay
+from sklearn.metrics import roc_curve, precision_recall_curve
 from scipy import interpolate
 
 
@@ -75,7 +74,7 @@ def subsample_to_ratio_indices(
     )  ## build the directory if it does not exists
     if has_previous_under_sampling:
         X_under, y_under = X[previous_under_sampling, :], y[previous_under_sampling]
-        X_negatifs = X_under[np.array(1 - y_under, dtype=bool)]  
+        X_negatifs = X_under[np.array(1 - y_under, dtype=bool)]
     else:
         X_negatifs = X[np.array(1 - y, dtype=bool)]
 
@@ -196,10 +195,13 @@ def run_eval(
     y,
     list_oversampling_and_params,
     splitter,
-    #subsample_ratios=[0.2, 0.1, 0.01],
-    #subsample_seeds=[11, 9, 5],
+    # subsample_ratios=[0.2, 0.1, 0.01],
+    # subsample_seeds=[11, 9, 5],
     to_standard_scale=True,
-    categorical_features=None
+    categorical_features=None,
+    bool_to_save_data = False,
+    give_scaler=False,
+    to_fit_on_all_and_pred_on_continuous=False
 ):
     """
     Main function of the procol.
@@ -228,6 +230,9 @@ def run_eval(
     X_copy, y_copy = X.copy(), y.copy()
 
     folds = list(splitter.split(X_copy, y_copy))
+
+    bool_mask = np.ones((X_copy.shape[1]), dtype=bool)
+    bool_mask[categorical_features] = False
     ##############################################
     ######## Start protocol by strategy    #######
     ##############################################
@@ -247,36 +252,59 @@ def run_eval(
                     X_train = scaler.fit_transform(X_train)
                 else:
                     bool_mask = np.ones((X_train.shape[1]), dtype=bool)
-                    bool_mask[categorical_features]= False
-                    X_train[:,bool_mask] = scaler.fit_transform(X_train[:,bool_mask]) ## continuous features only
+                    bool_mask[categorical_features] = False
+                    X_train[:, bool_mask] = scaler.fit_transform(
+                        X_train[:, bool_mask]
+                    )  ## continuous features only
 
-            X_res, y_res = oversampling_func.fit_resample(
-                X=X_train, y=y_train, **oversampling_params
-            )
+            if give_scaler: # we give the current scaler to the oversampling strategy
+                X_res, y_res = oversampling_func.fit_resample(
+                    X=X_train, y=y_train,scaler=scaler, **oversampling_params
+                )
+            else :
+                X_res, y_res = oversampling_func.fit_resample(
+                    X=X_train, y=y_train, **oversampling_params
+                )
             ######### Run of the given fold ###############
-
-            # Is shuffling useful within a fold isn't integrated in RF model ?
-            X_res, y_res = shuffle(X_res, y_res,random_state=0)  # to put in oversampling_func
+            X_res, y_res = shuffle(
+                X_res, y_res, random_state=0
+            )  # to put in oversampling_func. Note necessary
             model.fit(X_res, y_res)
             forest = hasattr(model, "estimators_") and hasattr(
                 model.estimators_[0], "get_depth"
             )
-            if forest:
+            if forest: # If the classifier is a forest, the tree depths of the forst are saved
                 curent_tree_depth = [
                     estimator.get_depth() for estimator in model.estimators_
                 ]
                 list_tree_depth.append(curent_tree_depth)
                 list_tree_depth_name.append(oversampling_name)
 
-            if to_standard_scale:
-                if categorical_features is None:
+            if to_standard_scale: ## We chacjk if we need to tranform the test set
+                if categorical_features is None: # Case without categorical features
                     X_test = scaler.transform(X_test)
-                else:
+                else: # case with categorical features. We only scale the conyinuous ones
                     bool_mask = np.ones((X_test.shape[1]), dtype=bool)
-                    bool_mask[categorical_features]= False
-                    X_test[:,bool_mask] = scaler.transform(X_test[:,bool_mask]) ## continuous features only
-            y_pred_probas = model.predict_proba(X_test)[:, 1]
+                    bool_mask[categorical_features] = False
+                    X_test[:, bool_mask] = scaler.transform(
+                        X_test[:, bool_mask]
+                    )  ## continuous features only
 
+            if to_fit_on_all_and_pred_on_continuous : # In this case, the oversampling strategy takes
+                # all features in input but retruns only the continuous ones.
+                # This means that the fit is done on the continuous one. So our test has to be on the continuous features only.
+                y_pred_probas = model.predict_proba(X_test[:,bool_mask])[:, 1]
+            else:
+                y_pred_probas = model.predict_proba(X_test)[:, 1]
+            
+            if bool_to_save_data : ## We save the oversampled data of each oversampling strategy.
+                np.save(
+                    os.path.join(output_dir, "xres"+oversampling_name+name_file), X_res
+                    )
+                np.save(
+                    os.path.join(output_dir, "yres"+oversampling_name+name_file), y_res
+                    )
+        
             ######## Results are saved ###################
             list_all_preds[i + 1].extend(y_pred_probas)
             if i == 0:
@@ -295,9 +323,16 @@ def run_eval(
     np.save(
         os.path.join(output_dir, "name_strats" + name_file), list_names_oversamplings
     )
+    if bool_to_save_data: ## Use it with train test split (1 fold)
+        np.save(
+            os.path.join(output_dir, "xtrain" + name_file), X_train
+            )
+        np.save(
+            os.path.join(output_dir, "ytrain" + name_file), y_train
+            )
 
 
-def compute_metrics(output_dir, name_file, list_metric):
+def compute_metrics(output_dir, name_file, list_metric,n_fold=5):
     """_summary_
 
     Parameters
@@ -333,7 +368,7 @@ def compute_metrics(output_dir, name_file, list_metric):
         for col_number, col_name in enumerate(name_col_strategies):
             ### Mean of the metrics on the 5 test folds:
             list_value = []
-            for j in range(5):
+            for j in range(n_fold):
                 df = df_all[df_all["fold"] == j]
                 y_true = df["y_true"].tolist()
                 pred_probas_all = df[col_name].tolist()
@@ -361,7 +396,7 @@ def compute_metrics(output_dir, name_file, list_metric):
 
 
 def compute_metrics_several_protocols(
-    output_dir, init_name_file, list_metric, bool_roc_auc_only=True, n_iter=100
+    output_dir, init_name_file, list_metric, std_by_fold=True,bool_roc_auc_only=True, n_iter=100,n_fold=5
 ):
     """_summary_
 
@@ -392,7 +427,7 @@ def compute_metrics_several_protocols(
             df_metrics_mean, df_metrics_std = compute_metrics(
                 output_dir=output_dir,
                 name_file=name_file,
-                list_metric=[(roc_auc_score, "roc_auc", "proba")],
+                list_metric=[(roc_auc_score, "roc_auc", "proba")],n_fold=n_fold
             )
             list_res.append(df_metrics_mean.to_numpy())
 
@@ -412,7 +447,7 @@ def compute_metrics_several_protocols(
         for i in range(n_iter):
             name_file = init_name_file + str(i) + ".npy"
             df_metrics_mean, df_metrics_std = compute_metrics(
-                output_dir=output_dir, name_file=name_file, list_metric=list_metric
+                output_dir=output_dir, name_file=name_file, list_metric=list_metric,n_fold=n_fold
             )
 
             list_res.append(df_metrics_mean.to_numpy())
@@ -450,6 +485,145 @@ class PaperTimeSeriesSplit(TimeSeriesSplit):
         folds = list(super().split(X))
         folds_from_starting_split = folds[self.starting_split :]
         return folds_from_starting_split
+    
+
+def compute_metrics_cotraining(output_dir_continuous,output_dir_categorical, name_file_continuous,name_file_categorical, list_metric,n_fold=5):
+    """_summary_
+
+    Parameters
+    ----------
+    output_dir : _type_
+        _description_
+    name_file : _type_
+        _description_
+    list_metric : _type_
+        _description_
+
+    Returns
+    -------
+    _type_
+        _description_
+    """
+    n_metric = len(list_metric)
+    metrics_names = []
+    for m in range(n_metric):
+        metrics_names.append(list_metric[m][1])
+    oversample_strategies_continuous = np.load(os.path.join(output_dir_continuous, "name_strats" + name_file_continuous))
+    predictions_by_strategy_continuous = np.load(os.path.join(output_dir_continuous, "preds_" + name_file_continuous))
+    df_continuous = pd.DataFrame(predictions_by_strategy_continuous, columns=oversample_strategies_continuous)
+    oversample_strategies_categorical = np.load(os.path.join(output_dir_categorical, "name_strats" + name_file_categorical))
+    predictions_by_strategy_categorical = np.load(os.path.join(output_dir_categorical, "preds_" + name_file_categorical))
+    df_categorical = pd.DataFrame(predictions_by_strategy_categorical, columns=oversample_strategies_categorical)
+    df_all = df_continuous[['y_true','fold']].copy()
+    df_all[['None']] = df_continuous[['None']] * df_categorical[['None']]
+    name_col_strategies = ['None']
+
+    array_resultats_metrics = np.zeros((n_metric, len(name_col_strategies)))
+    array_resultats_metrics_std = np.zeros((n_metric, len(name_col_strategies)))
+    for k in range(n_metric):
+        for col_number, col_name in enumerate(name_col_strategies):
+            ### Mean of the metrics on the 5 test folds:
+            list_value = []
+            for j in range(n_fold):
+                df = df_all[df_all["fold"] == j]
+                y_true = df["y_true"].tolist()
+                pred_probas_all = df[col_name].tolist()
+                y_pred = proba_to_label(y_pred_probas=pred_probas_all, treshold=0.5)
+
+                if list_metric[k][2] == "pred":
+                    value_metric = list_metric[k][0](y_true=y_true, y_pred=y_pred)
+                else:
+                    value_metric = list_metric[k][0](
+                        y_true=y_true, y_score=pred_probas_all
+                    )
+                list_value.append(value_metric)
+            array_resultats_metrics[k, col_number] = np.mean(list_value)
+            array_resultats_metrics_std[k, col_number] = np.std(list_value)
+
+    df_mean_metric = pd.DataFrame(
+        array_resultats_metrics, columns=name_col_strategies, index=metrics_names
+    )
+    df_std_metric = pd.DataFrame(
+        array_resultats_metrics_std,
+        columns=name_col_strategies,
+        index=metrics_names,
+    )
+    return df_mean_metric, df_std_metric
+
+def compute_metrics_several_protocols_cotraining(
+    output_dir_continuous,output_dir_categorical, init_name_file_continuous,init_name_file_categorical, list_metric, bool_roc_auc_only=True, n_iter=100,n_fold=5
+):
+    """_summary_
+
+    Parameters
+    ----------
+    output_dir : _type_
+        _description_
+    init_name_file : _type_
+        _description_
+    list_metric : _type_
+        _description_
+    bool_roc_auc_only : bool, optional
+        _description_, by default True
+    n_iter : int, optional
+        _description_, by default 100
+
+    Returns
+    -------
+    _type_
+        _description_
+    """
+    list_res = []
+
+    ######### CASE  ROC AUC only is computed ######
+    if bool_roc_auc_only is True:
+        for i in range(n_iter):
+            name_file_continuous = init_name_file_continuous + str(i) + ".npy"
+            name_file_categorical = init_name_file_categorical + str(i) + ".npy"
+            df_metrics_mean, df_metrics_std = compute_metrics_cotraining(
+                output_dir_continuous=output_dir_continuous,
+                output_dir_categorical=output_dir_categorical,
+                name_file_continuous=name_file_continuous,
+                name_file_categorical=name_file_categorical,
+                list_metric=[(roc_auc_score, "roc_auc", "proba")],n_fold=n_fold
+            )
+            list_res.append(df_metrics_mean.to_numpy())
+
+        name_cols = df_metrics_mean.columns
+        array_res = np.array(list_res)
+        df_final_mean = pd.DataFrame(
+            np.mean(array_res, axis=0).reshape((1, -1)), columns=name_cols
+        )
+        df_final_std = pd.DataFrame(
+            np.std(array_res, axis=0).reshape((1, -1)), columns=name_cols
+        )
+        df_final_mean.index = ["ROC AUC"]
+        df_final_std.index = ["ROC AUC"]
+
+    ######## CASE all the metrics are computed #######
+    else:
+        for i in range(n_iter):
+            name_file_continuous = init_name_file_continuous + str(i) + ".npy"
+            name_file_categorical = init_name_file_categorical + str(i) + ".npy"
+            df_metrics_mean, df_metrics_std = compute_metrics_cotraining(
+                output_dir_continuous=output_dir_continuous,
+                output_dir_categorical=output_dir_categorical,
+                name_file_continuous=name_file_continuous,
+                name_file_categorical=name_file_categorical,
+                list_metric=list_metric
+            )
+
+            list_res.append(df_metrics_mean.to_numpy())
+
+        name_cols = df_metrics_mean.columns
+        array_res = np.array(list_res)
+        df_final_mean = pd.DataFrame(np.mean(array_res, axis=0), columns=name_cols)
+        df_final_std = pd.DataFrame(np.std(array_res, axis=0), columns=name_cols)
+        list_metric_func, list_metric_name, list_metric_type = zip(*list_metric)
+        df_final_mean.index = list_metric_name
+        df_final_std.index = list_metric_name
+
+    return df_final_mean, df_final_std
 
 
 class PaperTimeSeriesSplitWithGroupOut(TimeSeriesSplit):
@@ -503,16 +677,28 @@ class PaperTimeSeriesSplitWithGroupOut(TimeSeriesSplit):
         return final_folds_from_starting_split
 
 
-def depth_func_linspace(min_value,max_value,size=10,add_border=False):
-    list_depth = np.linspace(min_value,max_value,size, dtype=int).tolist()
+def depth_func_linspace(min_value, max_value, size=10, add_border=False):
+    list_depth = np.linspace(min_value, max_value, size, dtype=int).tolist()
     if add_border:
-        border_array = [max_value-3,max_value-2,max_value-1,max_value,None]
-    else :
-        border_array=[None]
+        border_array = [max_value - 3, max_value - 2, max_value - 1, max_value, None]
+    else:
+        border_array = [None]
     list_depth.extend(border_array)
     return list(dict.fromkeys(list_depth))
 
-def plot_curves(output_dir,start_filename,n_iter,stategies_to_show=None,names_stategies_to_show=None,show_pr=False,show_auc_curves=True,to_show=True,value_alpha=0.2,kind_interpolation = 'linear'):
+
+def plot_curves(
+    output_dir,
+    start_filename,
+    n_iter,
+    stategies_to_show=None,
+    names_stategies_to_show=None,
+    show_pr=False,
+    show_auc_curves=True,
+    to_show=True,
+    value_alpha=0.2,
+    kind_interpolation="linear",
+):
     """_summary_
 
     Parameters
@@ -528,94 +714,118 @@ def plot_curves(output_dir,start_filename,n_iter,stategies_to_show=None,names_st
     show_pr : bool
         Show PR curves by default and ROC curves otherwise
     """
-    filename_0 = start_filename + str(0) +'.npy'
-    if stategies_to_show is None :
+    filename_0 = start_filename + str(0) + ".npy"
+    if stategies_to_show is None:
         stategies_to_show = np.load(
             os.path.join(output_dir, "name_strats" + filename_0)
         ).tolist()
-        stategies_to_show.remove('fold') # remove fold column which is not a strategy
-        stategies_to_show.remove('y_true') # remove y_true column which is not a strategy
-    if names_stategies_to_show is None :
+        stategies_to_show.remove("fold")  # remove fold column which is not a strategy
+        stategies_to_show.remove(
+            "y_true"
+        )  # remove y_true column which is not a strategy
+    if names_stategies_to_show is None:
         names_stategies_to_show = stategies_to_show
-    
+
     list_names_oversamplings = np.load(
         os.path.join(output_dir, "name_strats" + filename_0)
     )
-        
-    list_fpr = np.arange(start=0,stop=1.01,step=0.01)
-    list_recall = np.arange(start=0,stop=1.01,step=0.01)
-    array_interpolated_quantity = np.zeros((n_iter,len(list_recall),len(stategies_to_show)))
-    array_quantity_auc = np.zeros((n_iter,len(stategies_to_show)))
+
+    list_fpr = np.arange(start=0, stop=1.01, step=0.01)
+    list_recall = np.arange(start=0, stop=1.01, step=0.01)
+    array_interpolated_quantity = np.zeros(
+        (n_iter, len(list_recall), len(stategies_to_show))
+    )
+    array_quantity_auc = np.zeros((n_iter, len(stategies_to_show)))
     for i in range(n_iter):
-        filename = start_filename + str(i) +'.npy'
+        filename = start_filename + str(i) + ".npy"
         array_all_preds_strats_final = np.load(
             os.path.join(output_dir, "preds_" + filename)
         )
         df_all = pd.DataFrame(
             array_all_preds_strats_final, columns=list_names_oversamplings
         )
-            
-        for j,col in enumerate(stategies_to_show):
-            array_interpolated_quantity_folds = np.zeros((5,len(list_recall)))
+
+        for j, col in enumerate(stategies_to_show):
+            array_interpolated_quantity_folds = np.zeros((5, len(list_recall)))
             list_auc_folds = []
             for fold in range(5):
                 df = df_all[df_all["fold"] == fold]
                 y_true = df["y_true"].tolist()
                 pred_probas_col = df[col].tolist()
-                
-                if show_pr: ## PR Curves case
+
+                if show_pr:  ## PR Curves case
                     prec, rec, tresh = precision_recall_curve(y_true, pred_probas_col)
                     pr_auc = auc(rec, prec)
-                    interpolation_func = interpolate.interp1d(np.flip(rec), np.flip(prec) ,kind=kind_interpolation)
+                    interpolation_func = interpolate.interp1d(
+                        np.flip(rec), np.flip(prec), kind=kind_interpolation
+                    )
                     prec_interpolated = interpolation_func(list_recall)
-                    #array_interpolated_quantity_folds[fold,:] = prec_interpolated
-                    array_interpolated_quantity_folds[fold,:] = np.flip(prec_interpolated)
+                    # array_interpolated_quantity_folds[fold,:] = prec_interpolated
+                    array_interpolated_quantity_folds[fold, :] = np.flip(
+                        prec_interpolated
+                    )
                     list_auc_folds.append(pr_auc)
-                else :## ROC Curves case
+                else:  ## ROC Curves case
                     fpr, tpr, _ = roc_curve(y_true, pred_probas_col)
-                    interpolation_func = interpolate.interp1d(fpr, tpr,kind=kind_interpolation)
-                    tpr_interpolated = interpolation_func(list_fpr)  
-                    array_interpolated_quantity_folds[fold,:] = tpr_interpolated
+                    interpolation_func = interpolate.interp1d(
+                        fpr, tpr, kind=kind_interpolation
+                    )
+                    tpr_interpolated = interpolation_func(list_fpr)
+                    array_interpolated_quantity_folds[fold, :] = tpr_interpolated
                     roc_auc = roc_auc_score(y_true, pred_probas_col)
                     list_auc_folds.append(roc_auc)
-                    
-            array_interpolated_quantity[i,:,j]=array_interpolated_quantity_folds.mean(axis=0) ## the mean interpolated over the 5 fold are averaged
-            array_quantity_auc[i,j] = np.mean(list_auc_folds)
-    mean_final_prec = array_interpolated_quantity.mean(axis=0) ## interpolated precisions over the n_iter ietartions are averaged by strategy
+
+            array_interpolated_quantity[i, :, j] = (
+                array_interpolated_quantity_folds.mean(axis=0)
+            )  ## the mean interpolated over the 5 fold are averaged
+            array_quantity_auc[i, j] = np.mean(list_auc_folds)
+    mean_final_prec = array_interpolated_quantity.mean(
+        axis=0
+    )  ## interpolated precisions over the n_iter ietartions are averaged by strategy
     std_final_prec = array_interpolated_quantity.std(axis=0)
     ########### Plotting curves ##############
     if to_show:
-        plt.figure(figsize=(10,6))
-    for h,col in enumerate(names_stategies_to_show):
-        if show_pr: ## PR Curves case
-            if show_auc_curves :
-                pr_auc_col = auc(np.flip(list_recall),mean_final_prec[:,h])
-            else :
-                pr_auc_col = array_quantity_auc[:,h].mean()
-            lab_col = col + ' AUC='+ str(round(pr_auc_col,3))
-            #disp = PrecisionRecallDisplay(precision=mean_final_prec[:,h], recall=np.flip(list_recall))
-            #disp.plot()
-            plt.plot(np.flip(list_recall), mean_final_prec[:,h], label=lab_col)
-            plt.fill_between(np.flip(list_recall), mean_final_prec[:,h] + std_final_prec[:,h],
-                             mean_final_prec[:,h] - std_final_prec[:,h], alpha=value_alpha,step='pre') #color='grey'
-        else: ## ROC Curves case
-            if show_auc_curves :
-                pr_auc_col = auc(list_fpr,mean_final_prec[:,h])
-            else :
-                pr_auc_col = array_quantity_auc[:,h].mean()
-            lab_col = col + ' AUC='+ str(round(pr_auc_col,3))
-            plt.scatter(list_fpr,mean_final_prec[:,h],label=lab_col)
-            plt.fill_between(list_fpr, mean_final_prec[:,h] + std_final_prec[:,h],
-                             mean_final_prec[:,h] - std_final_prec[:,h], alpha=value_alpha,step='pre') #color='grey'
+        plt.figure(figsize=(10, 6))
+    for h, col in enumerate(names_stategies_to_show):
+        if show_pr:  ## PR Curves case
+            if show_auc_curves:
+                pr_auc_col = auc(np.flip(list_recall), mean_final_prec[:, h])
+            else:
+                pr_auc_col = array_quantity_auc[:, h].mean()
+            lab_col = col + " AUC=" + str(round(pr_auc_col, 3))
+            # disp = PrecisionRecallDisplay(precision=mean_final_prec[:,h], recall=np.flip(list_recall))
+            # disp.plot()
+            plt.plot(np.flip(list_recall), mean_final_prec[:, h], label=lab_col)
+            plt.fill_between(
+                np.flip(list_recall),
+                mean_final_prec[:, h] + std_final_prec[:, h],
+                mean_final_prec[:, h] - std_final_prec[:, h],
+                alpha=value_alpha,
+                step="pre",
+            )  # color='grey'
+        else:  ## ROC Curves case
+            if show_auc_curves:
+                pr_auc_col = auc(list_fpr, mean_final_prec[:, h])
+            else:
+                pr_auc_col = array_quantity_auc[:, h].mean()
+            lab_col = col + " AUC=" + str(round(pr_auc_col, 3))
+            plt.scatter(list_fpr, mean_final_prec[:, h], label=lab_col)
+            plt.fill_between(
+                list_fpr,
+                mean_final_prec[:, h] + std_final_prec[:, h],
+                mean_final_prec[:, h] - std_final_prec[:, h],
+                alpha=value_alpha,
+                step="pre",
+            )  # color='grey'
     #################### Add legend or not (for tuned function ploting) ##################
     if to_show:
         if show_pr:
-            plt.legend(loc='best', fontsize='small')
+            plt.legend(loc="best", fontsize="small")
             plt.title("PR Curves", weight="bold", fontsize=15)
             plt.xlabel("Recall", fontsize=12)
             plt.ylabel("Precision", fontsize=12)
         else:
-            plt.legend(loc='best', fontsize='small')
+            plt.legend(loc="best", fontsize="small")
             plt.title("ROC Curves", weight="bold", fontsize=15)
             plt.xlabel("False Positive Rate (FPR)", fontsize=12)
             plt.ylabel("True Positive Rate (TPR)", fontsize=12)
@@ -624,32 +834,94 @@ def plot_curves(output_dir,start_filename,n_iter,stategies_to_show=None,names_st
         plt.show()
 
 
-def plot_curves_tuned(output_dir,start_filename,n_iter,list_name_strat,list_name_strat_inside_file,list_name_strat_to_show=None,show_pr=False,
-                      show_auc_curves=True,value_alpha=0.2,kind_interpolation='linear'):
-    plt.figure(figsize=(10,6))
+def plot_curves_tuned(
+    output_dir,
+    start_filename,
+    n_iter,
+    list_name_strat,
+    list_name_strat_inside_file,
+    list_name_strat_to_show=None,
+    show_pr=False,
+    show_auc_curves=True,
+    value_alpha=0.2,
+    kind_interpolation="linear",
+):
+    plt.figure(figsize=(10, 6))
     if list_name_strat_to_show is None:
         list_name_strat_to_show = list_name_strat_inside_file
-    for i,strat in enumerate(list_name_strat):
-        curr_start_output_dir=os.path.join(output_dir,strat,'RF_100')
-        plot_curves(output_dir=curr_start_output_dir,start_filename=start_filename,n_iter=n_iter,
-                    stategies_to_show=[list_name_strat_inside_file[i]],names_stategies_to_show=[list_name_strat_to_show[i]],show_pr=show_pr,show_auc_curves=show_auc_curves,
-                    to_show=False,value_alpha=value_alpha,kind_interpolation=kind_interpolation)
-    
+    for i, strat in enumerate(list_name_strat):
+        curr_start_output_dir = os.path.join(output_dir, strat, "RF_100")
+        plot_curves(
+            output_dir=curr_start_output_dir,
+            start_filename=start_filename,
+            n_iter=n_iter,
+            stategies_to_show=[list_name_strat_inside_file[i]],
+            names_stategies_to_show=[list_name_strat_to_show[i]],
+            show_pr=show_pr,
+            show_auc_curves=show_auc_curves,
+            to_show=False,
+            value_alpha=value_alpha,
+            kind_interpolation=kind_interpolation,
+        )
+
     if show_pr:
-        plt.legend(loc='best', fontsize='small')
+        plt.legend(loc="best", fontsize="small")
         plt.title("PR Curves", weight="bold", fontsize=15)
         plt.xlabel("Recall", fontsize=12)
         plt.ylabel("Precision", fontsize=12)
     else:
-        plt.legend(loc='best', fontsize='small')
+        plt.legend(loc="best", fontsize="small")
         plt.title("ROC Curves", weight="bold", fontsize=15)
         plt.xlabel("False Positive Rate (FPR)", fontsize=12)
         plt.ylabel("True Positive Rate (TPR)", fontsize=12)
     plt.show()
 
 
-from sklearn.metrics import (precision_recall_curve,auc)
 def pr_auc_custom(y_true, y_score):
     precision, recall, tresh = precision_recall_curve(y_true, y_score)
-    res_auc = auc(recall,precision)
+    res_auc = auc(recall, precision)
     return res_auc
+
+
+from sklearn.metrics import precision_score
+def find_precision_at_recall_version3(precision, recall, threshold):
+    #disp = PrecisionRecallDisplay(precision=precision, recall=recall)
+    #disp.plot()
+    #plt.show()
+    roc_df = pd.DataFrame({'precision': precision[:-1], 'recall': recall[:-1], 'threshold':threshold })
+    roc_df.sort_values(by=['recall'],inplace=True)
+    roc_df.reset_index(drop=True, inplace=True)
+
+    indices=roc_df[roc_df['recall'] >= 0.5].index
+    ###index_final=roc_df.iloc[indices].idxmax()[0] # retourne les indices max colonne par colonne
+    ### le [0] c'est pour sélectionner le max selon la precision 
+    index_final=indices[0]
+    #print('res second:', roc_df.iloc[indices[2]].values)
+    res = roc_df.iloc[index_final].values
+    return res[0],res[1]
+
+def prec_at_recall_version3(y_true,y_score):
+    precision, recall, thresholds = precision_recall_curve(y_true=y_true,y_score=y_score)
+    res_precision, res_recall = find_precision_at_recall_version3(precision=precision, recall=recall, threshold=thresholds)
+    return res_precision
+
+def find_precision_at_recall_version3_02(precision, recall, threshold):
+    #disp = PrecisionRecallDisplay(precision=precision, recall=recall)
+    #disp.plot()
+    #plt.show()
+    roc_df = pd.DataFrame({'precision': precision[:-1], 'recall': recall[:-1], 'threshold':threshold })
+    roc_df.sort_values(by=['recall'],inplace=True)
+    roc_df.reset_index(drop=True, inplace=True)
+
+    indices=roc_df[roc_df['recall'] >= 0.2].index
+    ###index_final=roc_df.iloc[indices].idxmax()[0] # retourne les indices max colonne par colonne
+    ### le [0] c'est pour sélectionner le max selon la precision 
+    index_final=indices[0]
+    #print('res second:', roc_df.iloc[indices[2]].values)
+    res = roc_df.iloc[index_final].values
+    return res[0],res[1]
+
+def prec_at_recall_version3_02(y_true,y_score):
+    precision, recall, thresholds = precision_recall_curve(y_true=y_true,y_score=y_score)
+    res_precision, res_recall = find_precision_at_recall_version3_02(precision=precision, recall=recall, threshold=thresholds)
+    return res_precision
