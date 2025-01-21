@@ -23,7 +23,7 @@ In order to use our MGS strategy:
 The data sets of used for our article should be dowloaded  inside the *data/externals* folder. The data sets are available at the followings adresses :
 
 * [BankMarketing](https://archive.ics.uci.edu/dataset/222/bank+marketing)
-* [BankChurners]()
+* [BankChurners](https://www.kaggle.com/datasets/thedevastator/predicting-credit-card-customer-attrition-with-m)
 
 
 ## ⭐ Acknowledgements
