@@ -554,6 +554,14 @@ def generate_initial_data_onecat_v2_2025_02_11(dimension_continuous,n_samples,ra
     #return X_final,target,target_numeric
     return X_final,target_numeric
 
+def gmm_sampling(n_samples,z,mus,covs):
+    components = np.random.choice(list(range(len(z))),size=n_samples,replace=True,p=z)
+    list_sample = []
+    for i in range(n_samples):
+        current_component = components[i]
+        sample = np.random.multivariate_normal(mus[current_component], covs[current_component])
+        list_sample.append(sample)
+    return np.array(list_sample),components
 
 def generate_initial_data_onecat_2025_02_25(dimension_continuous,n_samples,random_state=123,verbose=0):
     np.random.seed(random_state)
