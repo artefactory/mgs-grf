@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+import time
 
 import numpy as np
 import pandas as pd
@@ -200,6 +201,7 @@ def run_eval(
     to_standard_scale=True,
     categorical_features=None,
     bool_to_save_data = False,
+    bool_to_save_runing_time = False,
     give_scaler=False,
     to_fit_on_all_and_pred_on_continuous=False
 ):
@@ -233,6 +235,8 @@ def run_eval(
 
     bool_mask = np.ones((X_copy.shape[1]), dtype=bool)
     bool_mask[categorical_features] = False
+    if bool_to_save_runing_time:
+        list_run_time = []
     ##############################################
     ######## Start protocol by strategy    #######
     ##############################################
@@ -262,6 +266,8 @@ def run_eval(
                     X=X_train, y=y_train,scaler=scaler, **oversampling_params
                 )
             else :
+                if bool_to_save_runing_time and fold==0:
+                    start = time.time()
                 X_res, y_res = oversampling_func.fit_resample(
                     X=X_train, y=y_train, **oversampling_params
                 )
@@ -270,6 +276,10 @@ def run_eval(
                 X_res, y_res, random_state=0
             )  # to put in oversampling_func. Note necessary
             model.fit(X_res, y_res)
+            if bool_to_save_runing_time and fold==0:
+                end = time.time()
+                list_run_time.append(end-start)
+
             forest = hasattr(model, "estimators_") and hasattr(
                 model.estimators_[0], "get_depth"
             )
@@ -318,6 +328,12 @@ def run_eval(
         pd.DataFrame(np.array(list_tree_depth).T, columns=list_tree_depth_name).to_csv(
             os.path.join(output_dir, "depth" + name_file[:-4] + ".csv")
         )
+    if bool_to_save_runing_time:
+        pd.DataFrame(np.array(list_run_time).reshape(1,-1), columns=[config[0] for config in list_oversampling_and_params]).to_csv(
+            os.path.join(output_dir, "runtime" + name_file[:-4] + ".csv")
+        )
+
+
     runs_path_file_strats = os.path.join(output_dir, "preds_" + name_file)
     np.save(runs_path_file_strats, np.array(list_all_preds).T)
     np.save(
