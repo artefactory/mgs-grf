@@ -22,38 +22,17 @@ class DrfFitPredictMixin:
         super().fit(X=X, y=y, sample_weight=sample_weight)
         self.train_X = X
         self.train_y = y
-        self.train_samples_leaves = [
-            tree.apply(X) for tree in self.estimators_
-        ]
-        #self.train_samples_leaves = super().apply(X)
+        self.train_samples_leaves = super().apply(X)
         end_fitiing = time.time()
         print("GRF fitting time : ",end_fitiing-start_fitiing )
-
-    def get_weights_old(self, x):   
-        w = np.zeros((len(self.train_X),))
-        for t, tree in enumerate(self.estimators_):
-            train_samples_leaves = self.train_samples_leaves[t]
-            x_leaf = tree.apply(x)[0] 
-            leaves_matches = (train_samples_leaves == x_leaf)
-            w[leaves_matches] += 1 / (self.n_estimators * leaves_matches.sum())
-            if False:
-                indices_train_samples_in_same_leaf = np.where(train_samples_leaves == x_leaf)[0]
-                n_leaves_in = len(indices_train_samples_in_same_leaf)
-                if n_leaves_in != 0:
-                    w[indices_train_samples_in_same_leaf] += 1 / (self.n_estimators * n_leaves_in)
-                    #for idx in indices_train_samples_in_same_leaf:
-                    #    w[idx] = w[idx] + 1 / (n_trees * n_leaves_in)
-        return w
-
+    
     def get_weights(self,X):
         w = [np.zeros((len(self.train_X),)) for i in range(len(X))]
         leafs_by_sample = super().apply(X)
-        for i in range(len(X)):
-            for t in range(len(self.estimators_)):
-                train_samples_leaves = self.train_samples_leaves[t]
-                x_leaf = leafs_by_sample[i,t]
-                leaves_matches = (train_samples_leaves == x_leaf)
-                w[i][leaves_matches] += 1 / (self.n_estimators * leaves_matches.sum())
+        leaves_match = np.array([leafs_by_sample[i] == self.train_samples_leaves for i in range(len(X))])
+        #leafs_by_sample = leafs_by_sample == _train_samples_leaves
+        n_by_tree = leaves_match.sum(axis=1)
+        w = (leaves_match / n_by_tree[:,np.newaxis,:]).mean(axis=2) # taille n_samples x n_train
         return w
 
     def predict(self, X):
