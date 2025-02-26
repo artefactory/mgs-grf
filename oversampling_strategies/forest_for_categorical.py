@@ -17,14 +17,10 @@ import time
 
 class DrfFitPredictMixin:
     def fit(self, X, y, sample_weight=None):
-        print('***GRF***')
-        start_fitiing = time.time()
         super().fit(X=X, y=y, sample_weight=sample_weight)
         self.train_X = X
         self.train_y = y
-        self.train_samples_leaves = super().apply(X)
-        end_fitiing = time.time()
-        print("GRF fitting time : ",end_fitiing-start_fitiing )
+        self.train_samples_leaves = super().apply(X) )
     
     def get_weights(self,X):
         w = [np.zeros((len(self.train_X),)) for i in range(len(X))]
@@ -36,7 +32,6 @@ class DrfFitPredictMixin:
         return w
 
     def predict(self, X):
-        start_predict = time.time()
         size_train = len(self.train_X)
         list_index_train_X = np.arange(start=0, stop=size_train, step=1)
         #if len(self.train_y.shape)==1 : ## 1-dimensionnal
@@ -50,12 +45,7 @@ class DrfFitPredictMixin:
 
         #weights = [self.get_weights(x.reshape(1, -1)) for x in X]
         weights = self.get_weights(X)
-        print("GRF weights calculations time : ",time.time()-start_predict)
         y_pred = [self.train_y[np.random.choice(a=list_index_train_X, size=1, replace=False, p=weights[i])].reshape(-1,) for i,x in enumerate(X)]
-
-        end_predict = time.time()
-        print("GRF predict time : ",end_predict-start_predict )
-        print('*********')
         return np.array(y_pred)
 
 
