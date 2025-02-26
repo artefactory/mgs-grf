@@ -20,7 +20,7 @@ class DrfFitPredictMixin:
         super().fit(X=X, y=y, sample_weight=sample_weight)
         self.train_X = X
         self.train_y = y
-        self.train_samples_leaves = super().apply(X) )
+        self.train_samples_leaves = super().apply(X) 
     
     def get_weights(self,X):
         w = [np.zeros((len(self.train_X),)) for i in range(len(X))]
