@@ -12,23 +12,29 @@ from sklearn.metrics._pairwise_distances_reduction import ArgKminClassMode
 from sklearn.neighbors._base import _get_weights,NeighborsBase
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.utils._param_validation import StrOptions
+import time
 
 
 class DrfFitPredictMixin:
     def fit(self, X, y, sample_weight=None):
+        print('***GRF***')
+        start_fitiing = time.time()
         super().fit(X=X, y=y, sample_weight=sample_weight)
         self.train_X = X
         self.train_y = y
         self.train_samples_leaves = [
             tree.apply(X) for tree in self.estimators_
         ]
+        #self.train_samples_leaves = super().apply(X)
+        end_fitiing = time.time()
+        print("GRF fitting time : ",end_fitiing-start_fitiing )
 
-    def get_weights(self, x):   
+    def get_weights_old(self, x):   
         w = np.zeros((len(self.train_X),))
         for t, tree in enumerate(self.estimators_):
             train_samples_leaves = self.train_samples_leaves[t]
-            x_leaf = tree.apply(x)[0]
-            leaves_matches = train_samples_leaves == x_leaf
+            x_leaf = tree.apply(x)[0] 
+            leaves_matches = (train_samples_leaves == x_leaf)
             w[leaves_matches] += 1 / (self.n_estimators * leaves_matches.sum())
             if False:
                 indices_train_samples_in_same_leaf = np.where(train_samples_leaves == x_leaf)[0]
@@ -39,18 +45,38 @@ class DrfFitPredictMixin:
                     #    w[idx] = w[idx] + 1 / (n_trees * n_leaves_in)
         return w
 
+    def get_weights(self,X):
+        w = [np.zeros((len(self.train_X),)) for i in range(len(X))]
+        leafs_by_sample = super().apply(X)
+        for i in range(len(X)):
+            for t in range(len(self.estimators_)):
+                train_samples_leaves = self.train_samples_leaves[t]
+                x_leaf = leafs_by_sample[i,t]
+                leaves_matches = (train_samples_leaves == x_leaf)
+                w[i][leaves_matches] += 1 / (self.n_estimators * leaves_matches.sum())
+        return w
+
     def predict(self, X):
+        start_predict = time.time()
         size_train = len(self.train_X)
         list_index_train_X = np.arange(start=0, stop=size_train, step=1)
-        if len(self.train_y.shape)==1 : ## 1-dimensionnal
-            y_pred = np.zeros((len(X),1), dtype=self.train_y.dtype)
-        else:
-            y_pred = np.zeros((len(X), self.train_y.shape[1]), dtype=self.train_y.dtype)
-        for i, x in enumerate(X):
-            w = self.get_weights(x.reshape(1, -1))
-            selected_index = np.random.choice(a=list_index_train_X, size=1, replace=False, p=w)
-            y_pred[i] = self.train_y[selected_index]
+        #if len(self.train_y.shape)==1 : ## 1-dimensionnal
+        #    y_pred = np.zeros((len(X),1), dtype=self.train_y.dtype)
+        #else:
+        #    y_pred = np.zeros((len(X), self.train_y.shape[1]), dtype=self.train_y.dtype)
+        #for i, x in enumerate(X):
+        #    w = self.get_weights(x.reshape(1, -1))
+        #    selected_index = np.random.choice(a=list_index_train_X, size=1, replace=False, p=w)
+        #    y_pred[i] = self.train_y[selected_index]
 
+        #weights = [self.get_weights(x.reshape(1, -1)) for x in X]
+        weights = self.get_weights(X)
+        print("GRF weights calculations time : ",time.time()-start_predict)
+        y_pred = [self.train_y[np.random.choice(a=list_index_train_X, size=1, replace=False, p=weights[i])].reshape(-1,) for i,x in enumerate(X)]
+
+        end_predict = time.time()
+        print("GRF predict time : ",end_predict-start_predict )
+        print('*********')
         return np.array(y_pred)
 
 
