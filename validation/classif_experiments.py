@@ -198,6 +198,7 @@ def run_eval(
     splitter,
     # subsample_ratios=[0.2, 0.1, 0.01],
     # subsample_seeds=[11, 9, 5],
+    y_splitter=None,
     to_standard_scale=True,
     categorical_features=None,
     bool_to_save_data = False,
@@ -230,7 +231,10 @@ def run_eval(
 
     X_copy, y_copy = X.copy(), y.copy()
 
-    folds = list(splitter.split(X_copy, y_copy))
+    if y_splitter is None: # Case split on y
+        folds = list(splitter.split(X_copy, y_copy))
+    else:
+        folds = list(splitter.split(X_copy, y_splitter))
 
     bool_mask = np.ones((X_copy.shape[1]), dtype=bool)
     bool_mask[categorical_features] = False
@@ -325,7 +329,6 @@ def run_eval(
         pd.DataFrame(np.array(list_run_time).reshape(1,-1), columns=[config[0] for config in list_oversampling_and_params]).to_csv(
             os.path.join(output_dir, "runtime" + name_file[:-4] + ".csv")
         )
-
 
     runs_path_file_strats = os.path.join(output_dir, "preds_" + name_file)
     np.save(runs_path_file_strats, np.array(list_all_preds).T)
