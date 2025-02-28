@@ -46,8 +46,8 @@ class DrfFitPredictMixin:
         #w = (leaves_match / n_by_tree[:,:, np.newaxis]).mean(axis=1) # taille n_samples x n_train
         #### END NEEW #####
         
-        n_by_tree = leaves_match.sum(axis=1)
-        w = (leaves_match / n_by_tree[:,np.newaxis,:]).mean(axis=2) # taille n_samples x n_train
+        n_by_tree = leaves_match.sum(axis=1)[:,np.newaxis,:]
+        w = (leaves_match / n_by_tree).mean(axis=2) # taille n_samples x n_train
         return w
 
     def predict(self, X):
