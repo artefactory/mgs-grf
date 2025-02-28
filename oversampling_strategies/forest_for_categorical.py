@@ -42,10 +42,12 @@ class DrfFitPredictMixin:
         #leaves_match = leafs_by_sample_repeat == self.train_samples_leaves.T
         ### taille n_samples x n_trees x n_train
         #print("Weights leaves match NEW : ", time.time()-start_old)
+        #n_by_tree = leaves_match.sum(axis=2)
+        #w = (leaves_match / n_by_tree[:,:, np.newaxis]).mean(axis=1) # taille n_samples x n_train
         #### END NEEW #####
         
-        n_by_tree = leaves_match.sum(axis=2)
-        w = (leaves_match / n_by_tree[:,:, np.newaxis]).mean(axis=1) # taille n_samples x n_train
+        n_by_tree = leaves_match.sum(axis=1)
+        w = (leaves_match / n_by_tree[:,np.newaxis,:]).mean(axis=2) # taille n_samples x n_train
         return w
 
     def predict(self, X):
