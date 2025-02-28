@@ -202,7 +202,6 @@ def run_eval(
     categorical_features=None,
     bool_to_save_data = False,
     bool_to_save_runing_time = False,
-    give_scaler=False,
     to_fit_on_all_and_pred_on_continuous=False
 ):
     """
@@ -260,17 +259,11 @@ def run_eval(
                     X_train[:, bool_mask] = scaler.fit_transform(
                         X_train[:, bool_mask]
                     )  ## continuous features only
-
-            if give_scaler: # we give the current scaler to the oversampling strategy
-                X_res, y_res = oversampling_func.fit_resample(
-                    X=X_train, y=y_train,scaler=scaler, **oversampling_params
-                )
-            else :
-                if bool_to_save_runing_time and fold==0:
-                    start = time.time()
-                X_res, y_res = oversampling_func.fit_resample(
-                    X=X_train, y=y_train, **oversampling_params
-                )
+            if bool_to_save_runing_time and fold==0:
+                start = time.time()
+            X_res, y_res = oversampling_func.fit_resample(
+                X=X_train, y=y_train, **oversampling_params
+            )
             ######### Run of the given fold ###############
             X_res, y_res = shuffle(
                 X_res, y_res, random_state=0
