@@ -25,73 +25,32 @@ def iterative_random_choice(probas):
 
 class DrfFitPredictMixin:
     def fit(self, X, y, sample_weight=None):
-        start_fitting = time.time()
         super().fit(X=X, y=y, sample_weight=sample_weight)
-        end_fitting = time.time() 
-        print("Fitting time 1 : ", end_fitting-start_fitting)
         self.train_y = y
-        #self.train_samples_leaves = super().apply(X)
         self.train_samples_leaves = super().apply(X).astype(np.int32)
-        end_fitting = time.time() 
-        print("Fitting time all : ", end_fitting-start_fitting)
-    
-    
-
     
     def get_weights(self,X):
-        start_weights = time.time()
-        #w = np.zeros((len(self.train_y), len(X)))
         leafs_by_sample = super().apply(X).astype(np.int32) # taille n_samples x n_trees
-        print("Weights apply on leaf : ", time.time()-start_weights)
         # train_samples_leaves: taille n_train x n_trees
-        #leaves_match = np.array([leafs_by_sample[i] == self.train_samples_leaves for i in range(len(X))])
-        start_old = time.time()
         leaves_match = np.array([leafs_by_sample[i] == self.train_samples_leaves for i in range(len(X))])
-        print("Weights leaves match old : ", time.time()-start_old)
 
-        ## NEEEW ####
-        start_old = time.time()
+        #### NEEEW ####
+        #start_old = time.time()
         ### taille n_samples x n_train x n_trees
-        leafs_by_sample_repeat = np.tile(leafs_by_sample.T, (len(self.train_samples_leaves), 1, 1)).T
-        print("repeat : ", time.time()-start_old)
-        leaves_match = leafs_by_sample_repeat == self.train_samples_leaves.T
+        #leafs_by_sample_repeat = np.tile(leafs_by_sample.T, (len(self.train_samples_leaves), 1, 1)).T
+        #print("repeat : ", time.time()-start_old)
+        #leaves_match = leafs_by_sample_repeat == self.train_samples_leaves.T
         ### taille n_samples x n_trees x n_train
-        print("Weights leaves match NEW : ", time.time()-start_old)
-        print("Weights leaves match new: ", time.time()-start_weights)
-        ### END NEEW #####
+        #print("Weights leaves match NEW : ", time.time()-start_old)
+        #### END NEEW #####
         
-        #leafs_by_sample = leafs_by_sample == _train_samples_leaves
-        #n_by_tree = leaves_match.sum(axis=1)
         n_by_tree = leaves_match.sum(axis=2)
-        print("Weights aa n_by_tree : ", time.time()-start_weights)
         w = (leaves_match / n_by_tree[:,:, np.newaxis]).mean(axis=1) # taille n_samples x n_train
-        #w = (leaves_match / n_by_tree[:,np.newaxis,:]).mean(axis=2) # taille n_samples x n_train
-        print("Weights w : ", time.time()-start_weights)
-        end_weights = time.time()
-        print("Weights time all : ", end_weights-start_weights)
         return w
 
     def predict(self, X):
-        list_index_train_X = np.arange(start=0, stop=len(self.train_y), step=1)
-        #if len(self.train_y.shape)==1 : ## 1-dimensionnal
-        #    y_pred = np.zeros((len(X),1), dtype=self.train_y.dtype)
-        #else:
-        #    y_pred = np.zeros((len(X), self.train_y.shape[1]), dtype=self.train_y.dtype)
-        #for i, x in enumerate(X):
-        #    w = self.get_weights(x.reshape(1, -1))
-        #    selected_index = np.random.choice(a=list_index_train_X, size=1, replace=False, p=w)
-        #    y_pred[i] = self.train_y[selected_index]
-
-        #weights = [self.get_weights(x.reshape(1, -1)) for x in X]
         weights = self.get_weights(X)
-        start_weights = time.time()
-        #y_pred = self.train_y[[
-        #    np.random.choice(a=list_index_train_X, size=1, replace=False, p=p)[0]
-        #    for p in weights]
-        #    ]
         res = self.train_y[iterative_random_choice(weights)]
-        print("y_pred_selection time all : ", time.time()-start_weights)
-        #return np.array(y_pred)
         return res
 
 
