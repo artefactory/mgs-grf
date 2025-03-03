@@ -563,13 +563,13 @@ def gmm_sampling(n_samples,z,mus,covs):
         list_sample.append(sample)
     return np.array(list_sample),components
 
-def generate_initial_data_onecat_2025_02_25(dimension_continuous,n_samples,random_state=123,verbose=0):
+def generate_initial_data_onecat_2025_02_28(dimension_continuous,n_samples,random_state=123,verbose=0):
     np.random.seed(random_state)
     #Xf=np.random.multivariate_normal(mean=2*np.ones(dimension_continuous-3),cov=3*np.eye(dimension_continuous-3),size=n_samples)
-    Xf = np.random.normal(loc=2,scale=3,size=(n_samples,1))
+    Xf = np.random.normal(loc=6,scale=30,size=(n_samples,1))
     for i in range(dimension_continuous-4):
         np.random.seed(seed=random_state+20+i)
-        curr_covariate = np.random.normal(loc=2,scale=3,size=(n_samples,1))
+        curr_covariate = np.random.normal(loc=6,scale=30,size=(n_samples,1))
         Xf = np.hstack((Xf,curr_covariate))
         
     z_p1 = np.eye(3) 
@@ -578,20 +578,28 @@ def generate_initial_data_onecat_2025_02_25(dimension_continuous,n_samples,rando
     #z_p2[0,0]=0.1
     z_p3 = np.eye(3) 
     #z_p3[1,1]=0.1
-    mu_p1 = np.array([1,1,1])
-    mu_p2 = np.array([4,4,4])
-    mu_p3 = np.array([7,7,7])
+    mu_p1 = np.array([3,3,3])
+    mu_p2 = np.array([6,6,6])
+    mu_p3 = np.array([9,9,9])
+
     
     X_gmm,z_plan = gmm_sampling(n_samples=n_samples,z=[22/50,22/50,6/50],
                          mus= [mu_p1,mu_p2,mu_p3],covs =[z_p1,z_p2,z_p2] )
+    #print("z_plan : ", z_plan)
     Xf = np.hstack((X_gmm,Xf))
     ### Feature categorical 
 
+    enc_w = OneHotEncoder(handle_unknown='ignore',sparse_output=False)
+    w_enc = enc_w.fit_transform(z_plan.reshape(-1, 1))
+    #print('enc_w : ', enc_w.get_feature_names_out())
+    #print("w_enc : ", w_enc)
+    XZ_enc = np.hstack((X_gmm,w_enc))
+    
     z_feature_cat_uniform, z_feature_cat_uniform_numeric = generate_synthetic_features_multinomial(
-        X=Xf,index_informatives=[0,1,2],
+        X=XZ_enc,index_informatives=[0,1,2,3,4,5],
         list_modalities=['A','B','C'],
-        list_beta = [np.array([5,2,-3]),np.array([4.8,2.2,-3.1]),np.array([4.9,1.8,-2.8])],
-        list_intercept= [0,0,0,])
+        list_beta = [np.array([2,-1,-3,-1,1.5,0]),np.array([2.1,-0.9,-3.1,1,-1.5,0]),np.array([1.9,-1.1,-2.9,1,1.5,1.3])],
+        list_intercept= [0,0,0,0,0,0])
     #print('z_feature_cat_uniform : ',Counter(z_feature_cat_uniform))
     
     
@@ -601,11 +609,9 @@ def generate_initial_data_onecat_2025_02_25(dimension_continuous,n_samples,rando
     z_plan[z_plan==str(1)] = 'b'
     z_plan[z_plan==str(2)] = 'c'
     #print(z_feature_cat_uniform)
-    #print(z_plan)
+    #print('z_plan :', z_plan)
     zw =  z_feature_cat_uniform.astype(object) + z_plan.astype(object)
     #print('zw : ', zw)
-    
-    
     enc = OneHotEncoder(handle_unknown='ignore',sparse_output=False)
     zw_enc  = enc.fit_transform(zw.reshape(-1, 1))
     #z_enc = enc.fit_transform(z_feature_cat_uniform.reshape(-1, 1))
@@ -626,7 +632,7 @@ def generate_initial_data_onecat_2025_02_25(dimension_continuous,n_samples,rando
             -30,-30,50,
            ]    
     target,target_numeric = generate_synthetic_features_logreg(X=X_final_enc,index_informatives=list_index_informatives,list_modalities=['No','Yes'],
-                                                beta=beta,treshold=.5,intercept=-28
+                                                beta=beta,treshold=.5,intercept=5
                                                                )
     X_final = np.hstack((Xf,z_feature_cat_uniform.reshape(-1,1)))
     #print('target_numeric : ', target_numeric)
@@ -643,4 +649,4 @@ def generate_initial_data_onecat_2025_02_25(dimension_continuous,n_samples,rando
         print("*************"*8)
         print('Composition of the target ', Counter(target_numeric))
     #return X_final,target,target_numeric
-    return X_final,target_numeric
+    return X_final,target_numeric, z_plan
