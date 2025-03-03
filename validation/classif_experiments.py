@@ -311,7 +311,7 @@ def run_eval(
                 np.save(
                     os.path.join(output_dir, "yres"+oversampling_name+name_file), y_res
                     )
-        
+                
             ######## Results are saved ###################
             list_all_preds[i + 1].extend(y_pred_probas)
             if i == 0:
@@ -341,6 +341,9 @@ def run_eval(
             )
         np.save(
             os.path.join(output_dir, "ytrain" + name_file), y_train
+            )
+        np.save(
+            os.path.join(output_dir, "xtest" + name_file), X_test
             )
 
 
