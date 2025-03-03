@@ -488,87 +488,13 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
             return (X_, y_, output[2],output[3])
         #return (X_, y_) if len(output) == 2 else (X_, y_, output[2])
 
-    def _fit_resample(self, X, y=None,to_return_classifier=False,scaler=None, n_final_sample=None):
-        """
-        if y=None, all points are considered positive, and oversampling on all X
-        if n_final_sample=None, objective is balanced data.
-        """
-
-        if y is None:
-            X_positifs = X
-            X_negatifs = np.ones((0, X.shape[1]))
-            assert (
-                n_final_sample is not None
-            ), "You need to provide a number of final samples."
-        else:
-            X_positifs = X[y == 1]
-            X_negatifs = X[y == 0]
-            if n_final_sample is None:
-                n_final_sample = (y == 0).sum()
-        if len(self.categorical_features) == X.shape[1]:
-            raise ValueError(
-                "MultiOutPutClassifier_and_MGS is not designed to work only with categorical "
-                "features. It requires some numerical features."
-            )
-        bool_mask = np.ones((X_positifs.shape[1]), dtype=bool)
-        bool_mask[self.categorical_features] = False
-        X_positifs_all_features = X_positifs.copy()
-        X_negatifs_all_features = X_negatifs.copy()
-        X_positifs = X_positifs_all_features[:, bool_mask]  ## continuous features
-        X_negatifs = X_negatifs_all_features[:, bool_mask]  ## continuous features
-        X_positifs_categorical = X_positifs_all_features[:, ~bool_mask]
-        X_negatifs_categorical = X_negatifs_all_features[:, ~bool_mask]
+    def _fit_resample_continuous(self, n_final_sample,X_positifs,X_positifs_categorical=None):
+        
         X_positifs = X_positifs.astype(float)
-
         n_minoritaire = X_positifs.shape[0]
         dimension_continuous = X_positifs.shape[1]  ## features continues seulement
 
         np.random.seed(self.random_state)
-        if self.to_encode:
-            ord_encoder = OrdinalEncoder(
-                handle_unknown="use_encoded_value", unknown_value=-1, dtype=float
-            )
-            X_positifs_categorical_encoded = ord_encoder.fit_transform(
-                X_positifs_categorical.astype(str)
-            )
-            ### Fit :
-            self.Classifier.fit(
-                X_positifs, X_positifs_categorical_encoded
-            )  # learn on continuous features in order to predict categorical feature
-        elif self.to_encode_onehot:
-            onehot_encoder = OneHotEncoder(handle_unknown='ignore',dtype=float,sparse_output=False)
-            X_positifs_categorical_encoded = onehot_encoder.fit_transform(
-                X_positifs_categorical.astype(str)
-            )
-            if self.bool_rf_regressor or self.bool_drfsk_regressor:  ## When using regressorsn the data are scaled. Because regressor predict is tretaed diffrently (probas got diffrently)
-                var_scaler_cat = StandardScaler(with_mean=False,with_std=True)
-                X_positifs_categorical_encoded = var_scaler_cat.fit_transform(X_positifs_categorical_encoded) ## we scale the categorical variables 
-            ### Fit :
-            self.Classifier.fit(
-                X_positifs, X_positifs_categorical_encoded
-            )  # learn on continuous features in order to predict categorical feature
-
-        elif self.bool_rf_str : #case RFc on the concatenated strings modalities
-            #type_cat = X_positifs_categorical.astype(str).dtype
-            sep_array = np.full((n_minoritaire,len(self.categorical_features)-1),',',dtype=str)
-            sep_array = np.hstack((sep_array,np.full((n_minoritaire,1),'',dtype=str))) # We do not want an comma after the last modality
-            X_positifs_categorical_str= np.char.add(X_positifs_categorical.astype(str),sep_array) # We add commas at the end of each mdality
-            X_positifs_categorical_str = X_positifs_categorical_str.astype(object).sum(axis=1) # We concatenate by row the modalities 
-            self.Classifier.fit(
-                X_positifs, X_positifs_categorical_str
-            )  # learn on continuous features in order to predict categorical features combinasion concatenated
-
-        elif len(self.categorical_features)==1: # ravel in case of one categorical freatures
-            self.Classifier.fit(
-                X_positifs, X_positifs_categorical.ravel().astype(str)
-            )  # learn on continuous features in order to predict categorical features
-        else:
-            self.Classifier.fit(
-                X_positifs, X_positifs_categorical.astype(str)
-            )  # learn on continuous features in order to predict categorical features
-
-
-        ######### CONTINUOUS ################
         
         if self.fit_nn_on_continuous_only: # We fit the nn estimator only on the continuous features
             neigh = NearestNeighbors(n_neighbors=self.K, algorithm="ball_tree")
@@ -697,7 +623,51 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
             u = np.random.normal(loc=0, scale=1, size=dimension_continuous)
             new_observation = mus[central_point, :] + As[central_point].dot(u)
             new_samples[i, :] = new_observation
-        ############### CATEGORICAL ##################
+        
+        return new_samples
+
+    def _fit_resample_categorical(self,new_samples, X_positifs, X_positifs_categorical):
+        n_minoritaire = X_positifs.shape[0]
+        if self.to_encode:
+            ord_encoder = OrdinalEncoder(
+                handle_unknown="use_encoded_value", unknown_value=-1, dtype=float
+            )
+            X_positifs_categorical_encoded = ord_encoder.fit_transform(
+                X_positifs_categorical.astype(str)
+            )
+            ### Fit :
+            self.Classifier.fit(
+                X_positifs, X_positifs_categorical_encoded
+            )  # learn on continuous features in order to predict categorical feature
+        elif self.to_encode_onehot:
+            onehot_encoder = OneHotEncoder(handle_unknown='ignore',dtype=float,sparse_output=False)
+            X_positifs_categorical_encoded = onehot_encoder.fit_transform(
+                X_positifs_categorical.astype(str)
+            )
+            if self.bool_rf_regressor or self.bool_drfsk_regressor:  ## When using regressorsn the data are scaled. Because regressor predict is tretaed diffrently (probas got diffrently)
+                var_scaler_cat = StandardScaler(with_mean=False,with_std=True)
+                X_positifs_categorical_encoded = var_scaler_cat.fit_transform(X_positifs_categorical_encoded) ## we scale the categorical variables 
+            ### Fit :
+            self.Classifier.fit(
+                X_positifs, X_positifs_categorical_encoded
+            )  # learn on continuous features in order to predict categorical feature
+        elif self.bool_rf_str : #case RFc on the concatenated strings modalities
+            #type_cat = X_positifs_categorical.astype(str).dtype
+            sep_array = np.full((n_minoritaire,len(self.categorical_features)-1),',',dtype=str)
+            sep_array = np.hstack((sep_array,np.full((n_minoritaire,1),'',dtype=str))) # We do not want an comma after the last modality
+            X_positifs_categorical_str= np.char.add(X_positifs_categorical.astype(str),sep_array) # We add commas at the end of each mdality
+            X_positifs_categorical_str = X_positifs_categorical_str.astype(object).sum(axis=1) # We concatenate by row the modalities 
+            self.Classifier.fit(
+                X_positifs, X_positifs_categorical_str
+            )  # learn on continuous features in order to predict categorical features combinasion concatenated
+        elif len(self.categorical_features)==1: # ravel in case of one categorical freatures
+            self.Classifier.fit(
+                X_positifs, X_positifs_categorical.ravel().astype(str)
+            )  # learn on continuous features in order to predict categorical features
+        else:
+            self.Classifier.fit(
+                X_positifs, X_positifs_categorical.astype(str)
+            )  # learn on continuous features in order to predict categorical features
         if self.bool_drf: # special case of prediction for DRF (from the original article)
             out = self.Classifier.predict(newdata=new_samples, functional="weights")
             sample = np.zeros((new_samples.shape[0], out.y.shape[1]))
@@ -741,25 +711,66 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
                 start_idx = curr_n_modalities     
 
         elif len(self.categorical_features)==1:# Ravel in case of one categorical freatures
-            if scaler is None: 
-                new_samples_cat = self.Classifier.predict(new_samples).reshape(-1,1)
-            else:# We give the scaler to the predictor (for SemiOracle )
-                new_samples_cat = self.Classifier.predict(new_samples,scaler=scaler).reshape(-1,1)
-        else:
-            if scaler is None:
-                new_samples_cat = self.Classifier.predict(new_samples)  
-            else :# We give the scaler to the predictor (for SemiOracle )
-                 new_samples_cat = self.Classifier.predict(new_samples,scaler=scaler)  
-        np.random.seed()
-        ##### END ######
+            new_samples_cat = self.Classifier.predict(new_samples).reshape(-1,1)
 
-        if self.to_encode:
-            new_samples_cat = ord_encoder.inverse_transform(new_samples_cat)
-        elif self.to_encode_onehot:
-            new_samples_cat = onehot_encoder.inverse_transform(new_samples_cat)
+        else:
+            new_samples_cat = self.Classifier.predict(new_samples)  
+
+        if self.to_encode :
+            enc = ord_encoder
+            return new_samples_cat, enc
+        elif self.to_encode_onehot :
+            enc = onehot_encoder
+            return new_samples_cat, enc
+        else:
+            return new_samples_cat
+
+    def _fit_resample(self, X, y=None,to_return_classifier=False,scaler=None, n_final_sample=None):
+        """
+        if y=None, all points are considered positive, and oversampling on all X
+        if n_final_sample=None, objective is balanced data.
+        """
+
+        if y is None:
+            X_positifs = X
+            X_negatifs = np.ones((0, X.shape[1]))
+            assert (
+                n_final_sample is not None
+            ), "You need to provide a number of final samples."
+        else:
+            X_positifs = X[y == 1]
+            X_negatifs = X[y == 0]
+            if n_final_sample is None:
+                n_final_sample = (y == 0).sum()
+        if len(self.categorical_features) == X.shape[1]:
+            raise ValueError(
+                "MultiOutPutClassifier_and_MGS is not designed to work only with categorical "
+                "features. It requires some numerical features."
+            )
+        bool_mask = np.ones((X_positifs.shape[1]), dtype=bool)
+        bool_mask[self.categorical_features] = False
+        X_positifs_all_features = X_positifs.copy()
+        X_negatifs_all_features = X_negatifs.copy()
+        X_positifs = X_positifs_all_features[:, bool_mask]  ## continuous features
+        X_negatifs = X_negatifs_all_features[:, bool_mask]  ## continuous features
+        X_positifs_categorical = X_positifs_all_features[:, ~bool_mask]
+        X_negatifs_categorical = X_negatifs_all_features[:, ~bool_mask]
+
+        np.random.seed(self.random_state)
+
+        new_samples = self._fit_resample_continuous(n_final_sample,X_positifs,X_positifs_categorical)
+
+        if self.to_encode or self.to_encode_onehot:
+            new_samples_cat,enc = self._fit_resample_categorical(new_samples,X_positifs,X_positifs_categorical)
+        else:
+            new_samples_cat = self._fit_resample_categorical(new_samples,X_positifs,X_positifs_categorical)
+
+
+        if self.to_encode or self.to_encode_onehot:
+            new_samples_cat = enc.inverse_transform(new_samples_cat)
             
         new_samples_final = np.zeros(
-            (n_synthetic_sample, X_positifs_all_features.shape[1]), dtype=object
+            (new_samples.shape[0], X_positifs_all_features.shape[1]), dtype=object
         )
         new_samples_final[:, bool_mask] = new_samples
         new_samples_final[:, ~bool_mask] = new_samples_cat
@@ -785,7 +796,7 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
 
         if to_return_classifier:
             if self.to_encode_onehot:
-                return oversampled_X, oversampled_y, self.Classifier, onehot_encoder
+                return oversampled_X, oversampled_y, self.Classifier, enc
             else:
                 return oversampled_X, oversampled_y,self.Classifier
         else:
