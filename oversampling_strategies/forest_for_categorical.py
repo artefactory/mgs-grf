@@ -17,7 +17,7 @@ import time
 
 def iterative_random_choice(probas):
         """
-        Function for applying a random choice several times
+        Function for applying a np.random.choice several times with succesive values of probas
         """
         thresholds = np.random.uniform(size=len(probas))
         cumulative_weights = np.cumsum(probas, axis=1)
