@@ -452,43 +452,8 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
     def array_of_lists_to_array(self,arr): ## Used when calling fit_resampl with  bool_rf_str=True
         return np.apply_along_axis(lambda a: np.array(a[0]), -1, arr[..., None])
     
-    def fit_resample(self, X, y,to_return_classifier=False,scaler=None):  # scaler Necessary only for SemiOracle
-        """Resample the dataset.
 
-        Parameters
-        ----------
-        X : {array-like, dataframe, sparse matrix} of shape \
-                (n_samples, n_features)
-            Matrix containing the data which have to be sampled.
-
-        y : array-like of shape (n_samples,)
-            Corresponding label for each sample in X.
-
-        Returns
-        -------
-        X_resampled : {array-like, dataframe, sparse matrix} of shape \
-                (n_samples_new, n_features)
-            The array containing the resampled data.
-
-        y_resampled : array-like of shape (n_samples_new,)
-            The corresponding label of `X_resampled`.
-        """
-
-        if scaler is None:
-            output = self._fit_resample(X, y,to_return_classifier=to_return_classifier)
-        else:
-            output = self._fit_resample(X, y,scaler=scaler)
-
-        X_,y_=output[0],output[1]
-        if len(output) == 2:
-            return (X_, y_) 
-        elif len(output) == 3:
-            return (X_, y_, output[2])
-        else:
-            return (X_, y_, output[2],output[3])
-        #return (X_, y_) if len(output) == 2 else (X_, y_, output[2])
-
-    def _fit_resample_continuous(self, n_final_sample,X_positifs,X_positifs_categorical=None):
+    def _fit_resample_continuous(self, n_synthetic_sample,X_positifs,X_positifs_categorical=None):
         
         X_positifs = X_positifs.astype(float)
         n_minoritaire = X_positifs.shape[0]
@@ -523,7 +488,6 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
             )
 
 
-        n_synthetic_sample = n_final_sample - n_minoritaire
         if self.mucentered:
             # We sample from mean of neighbors
             all_neighbors = X_positifs[neighbor_by_index.flatten()]
@@ -725,74 +689,55 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
         else:
             return new_samples_cat
 
-    def _fit_resample(self, X, y=None,to_return_classifier=False,scaler=None, n_final_sample=None):
+    def _fit_resample(self, X, y=None,to_return_classifier=False, n_final_sample=None):
         """
         if y=None, all points are considered positive, and oversampling on all X
         if n_final_sample=None, objective is balanced data.
         """
-
-        if y is None:
-            X_positifs = X
-            X_negatifs = np.ones((0, X.shape[1]))
-            assert (
-                n_final_sample is not None
-            ), "You need to provide a number of final samples."
-        else:
-            X_positifs = X[y == 1]
-            X_negatifs = X[y == 0]
-            if n_final_sample is None:
-                n_final_sample = (y == 0).sum()
         if len(self.categorical_features) == X.shape[1]:
             raise ValueError(
                 "MultiOutPutClassifier_and_MGS is not designed to work only with categorical "
                 "features. It requires some numerical features."
             )
-        bool_mask = np.ones((X_positifs.shape[1]), dtype=bool)
-        bool_mask[self.categorical_features] = False
-        X_positifs_all_features = X_positifs.copy()
-        X_negatifs_all_features = X_negatifs.copy()
-        X_positifs = X_positifs_all_features[:, bool_mask]  ## continuous features
-        X_negatifs = X_negatifs_all_features[:, bool_mask]  ## continuous features
-        X_positifs_categorical = X_positifs_all_features[:, ~bool_mask]
-        X_negatifs_categorical = X_negatifs_all_features[:, ~bool_mask]
-
+        
         np.random.seed(self.random_state)
 
-        new_samples = self._fit_resample_continuous(n_final_sample,X_positifs,X_positifs_categorical)
+        oversampled_X = X
+        oversampled_y = y
+        for class_sample, n_samples in self.sampling_strategy_.items():
+            print("n_samples : ", n_samples)
+            if n_samples == 0:
+                continue
+            X_positifs = X[y == class_sample] ## current class
+            #X_negatifs = X[y != class_sample]
 
-        if self.to_encode or self.to_encode_onehot:
-            new_samples_cat,enc = self._fit_resample_categorical(new_samples,X_positifs,X_positifs_categorical)
-        else:
-            new_samples_cat = self._fit_resample_categorical(new_samples,X_positifs,X_positifs_categorical)
+            bool_mask = np.ones((X_positifs.shape[1]), dtype=bool)
+            bool_mask[self.categorical_features] = False
+            X_positifs_all_features = X_positifs.copy()
+            X_positifs = X_positifs_all_features[:, bool_mask]  ## continuous features
+            X_positifs_categorical = X_positifs_all_features[:, ~bool_mask]
 
+            new_samples = self._fit_resample_continuous(n_samples,X_positifs,X_positifs_categorical)
 
-        if self.to_encode or self.to_encode_onehot:
-            new_samples_cat = enc.inverse_transform(new_samples_cat)
+            if self.to_encode or self.to_encode_onehot:
+                new_samples_cat,enc = self._fit_resample_categorical(new_samples,X_positifs,X_positifs_categorical)
+                new_samples_cat = enc.inverse_transform(new_samples_cat)
+            else:
+                new_samples_cat = self._fit_resample_categorical(new_samples,X_positifs,X_positifs_categorical)
             
-        new_samples_final = np.zeros(
-            (new_samples.shape[0], X_positifs_all_features.shape[1]), dtype=object
-        )
-        new_samples_final[:, bool_mask] = new_samples
-        new_samples_final[:, ~bool_mask] = new_samples_cat
+            print("new_samples.shape : ", new_samples.shape)
+            print("new_samples_cat.shape : ", new_samples_cat.shape)
+            new_samples_final = np.zeros(
+                (n_samples, X_positifs_all_features.shape[1]), dtype=object
+            )
+            new_samples_final[:, bool_mask] = new_samples
+            new_samples_final[:, ~bool_mask] = new_samples_cat
 
-        X_positifs_final = np.zeros(
-            (len(X_positifs), X_positifs_all_features.shape[1]), dtype=object
-        )
-        X_positifs_final[:, bool_mask] = X_positifs
-        X_positifs_final[:, ~bool_mask] = X_positifs_categorical
-
-        X_negatifs_final = np.zeros(
-            (len(X_negatifs), X_positifs_all_features.shape[1]), dtype=object
-        )
-        X_negatifs_final[:, bool_mask] = X_negatifs
-        X_negatifs_final[:, ~bool_mask] = X_negatifs_categorical
-
-        oversampled_X = np.concatenate(
-            (X_negatifs_final, X_positifs_final, new_samples_final), axis=0
-        )
-        oversampled_y = np.hstack(
-            (np.full(len(X_negatifs), 0), np.full((n_final_sample,), 1))
-        )
+        ## Add the generated samples of the class to the final array
+            oversampled_X = np.concatenate((oversampled_X, new_samples_final), axis=0)
+            oversampled_y = np.hstack(
+                (oversampled_y,np.full(n_samples, class_sample))
+            )
 
         if to_return_classifier:
             if self.to_encode_onehot:
