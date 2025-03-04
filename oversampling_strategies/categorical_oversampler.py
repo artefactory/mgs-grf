@@ -632,6 +632,8 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
             self.Classifier.fit(
                 X_positifs, X_positifs_categorical.astype(str)
             )  # learn on continuous features in order to predict categorical features
+
+
         if self.bool_drf: # special case of prediction for DRF (from the original article)
             out = self.Classifier.predict(newdata=new_samples, functional="weights")
             sample = np.zeros((new_samples.shape[0], out.y.shape[1]))
@@ -678,7 +680,8 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
             new_samples_cat = self.Classifier.predict(new_samples).reshape(-1,1)
 
         else:
-            new_samples_cat = self.Classifier.predict(new_samples)  
+            new_samples_cat = self.Classifier.predict(new_samples) 
+             
 
         if self.to_encode :
             enc = ord_encoder
@@ -705,7 +708,6 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
         oversampled_X = X
         oversampled_y = y
         for class_sample, n_samples in self.sampling_strategy_.items():
-            print("n_samples : ", n_samples)
             if n_samples == 0:
                 continue
             X_positifs = X[y == class_sample] ## current class
@@ -725,8 +727,6 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
             else:
                 new_samples_cat = self._fit_resample_categorical(new_samples,X_positifs,X_positifs_categorical)
             
-            print("new_samples.shape : ", new_samples.shape)
-            print("new_samples_cat.shape : ", new_samples_cat.shape)
             new_samples_final = np.zeros(
                 (n_samples, X_positifs_all_features.shape[1]), dtype=object
             )
