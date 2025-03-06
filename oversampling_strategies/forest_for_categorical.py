@@ -53,9 +53,10 @@ class DrfFitPredictMixin:
             weights = self.get_weights(X)
         else:
             list_weights = []
-            for batch in np.split(X, len(X)//batch_size ):
+            for batch in np.array_split(X, len(X)//batch_size ):
                 list_weights.append(self.get_weights(batch))
-            weights = np.array(list_weights).ravel()
+            weights = np.array(list_weights[:-1]).reshape((-1, self.train_samples_leaves.shape[0])) #self.train_samples_leaves.shape[0] n_train
+            weights = np.vstack(( weights, list_weights[-1] ))
 
         res = self.train_y[iterative_random_choice(weights)]
         return res
