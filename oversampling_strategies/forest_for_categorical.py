@@ -27,13 +27,11 @@ class DrfFitPredictMixin:
     def fit(self, X, y, sample_weight=None):
         super().fit(X=X, y=y, sample_weight=sample_weight)
         self.train_y = y
-        self.train_samples_leaves = super().apply(X).astype(np.int32)
+        self.train_samples_leaves = super().apply(X).astype(np.int32) # train_samples_leaves: taille n_train x n_trees
     
     def get_weights(self,X):
         leafs_by_sample = super().apply(X).astype(np.int32) # taille n_samples x n_trees
-        # train_samples_leaves: taille n_train x n_trees
         leaves_match = np.array([leafs_by_sample[i] == self.train_samples_leaves for i in range(len(X))])
-
         #### NEEEW ####
         #start_old = time.time()
         ### taille n_samples x n_train x n_trees
@@ -50,8 +48,15 @@ class DrfFitPredictMixin:
         w = (leaves_match / n_by_tree).mean(axis=2) # taille n_samples x n_train
         return w
 
-    def predict(self, X):
-        weights = self.get_weights(X)
+    def predict(self, X,batch_size=None):
+        if batch_size is None:
+            weights = self.get_weights(X)
+        else:
+            list_weights = []
+            for batch in np.split(X, len(X)//batch_size ):
+                list_weights.append(self.get_weights(batch))
+            weights = np.array(list_weights).ravel()
+
         res = self.train_y[iterative_random_choice(weights)]
         return res
 
