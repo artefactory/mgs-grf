@@ -713,25 +713,26 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
             X_positifs = X[y == class_sample] ## current class
             #X_negatifs = X[y != class_sample]
 
-            bool_mask = np.ones((X_positifs.shape[1]), dtype=bool)
-            bool_mask[self.categorical_features] = False
-            X_positifs_all_features = X_positifs.copy()
-            X_positifs = X_positifs_all_features[:, bool_mask]  ## continuous features
-            X_positifs_categorical = X_positifs_all_features[:, ~bool_mask]
+            continuous = np.ones((X_positifs.shape[1]), dtype=bool)
+            continuous[self.categorical_features] = False
+            #X_positifs_all_features = X_positifs.copy()
+            #X_positifs = X_positifs_all_features[:, bool_mask]  ## continuous features
+            #X_positifs_categorical = X_positifs_all_features[:, ~bool_mask]
 
-            new_samples = self._fit_resample_continuous(n_samples,X_positifs,X_positifs_categorical)
+            new_samples = self._fit_resample_continuous(n_samples,X_positifs[:, continuous],X_positifs[:, ~continuous])
 
             if self.to_encode or self.to_encode_onehot:
-                new_samples_cat,enc = self._fit_resample_categorical(new_samples,X_positifs,X_positifs_categorical)
+                new_samples_cat,enc = self._fit_resample_categorical(new_samples,X_positifs[:, continuous],X_positifs[:, ~continuous])
                 new_samples_cat = enc.inverse_transform(new_samples_cat)
             else:
-                new_samples_cat = self._fit_resample_categorical(new_samples,X_positifs,X_positifs_categorical)
+                new_samples_cat = self._fit_resample_categorical(new_samples,X_positifs[:, continuous],X_positifs[:, ~continuous])
             
             new_samples_final = np.zeros(
-                (n_samples, X_positifs_all_features.shape[1]), dtype=object
+                (n_samples, X_positifs.shape[1]), dtype=object
             )
-            new_samples_final[:, bool_mask] = new_samples
-            new_samples_final[:, ~bool_mask] = new_samples_cat
+            new_samples_final[:, continuous] = new_samples
+            new_samples_final[:, ~continuous] = new_samples_cat
+            del new_samples, new_samples_cat
 
         ## Add the generated samples of the class to the final array
             oversampled_X = np.concatenate((oversampled_X, new_samples_final), axis=0)
