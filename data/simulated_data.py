@@ -566,10 +566,10 @@ def gmm_sampling(n_samples,z,mus,covs):
 def generate_initial_data_onecat_2025_02_28(dimension_continuous,n_samples,random_state=123,verbose=0):
     np.random.seed(random_state)
     #Xf=np.random.multivariate_normal(mean=2*np.ones(dimension_continuous-3),cov=3*np.eye(dimension_continuous-3),size=n_samples)
-    Xf = np.random.normal(loc=6,scale=30,size=(n_samples,1))
+    Xf = np.random.normal(loc=6,scale=4,size=(n_samples,1))
     for i in range(dimension_continuous-4):
         np.random.seed(seed=random_state+20+i)
-        curr_covariate = np.random.normal(loc=6,scale=30,size=(n_samples,1))
+        curr_covariate = np.random.normal(loc=6,scale=4,size=(n_samples,1))
         Xf = np.hstack((Xf,curr_covariate))
         
     z_p1 = np.eye(3) 
