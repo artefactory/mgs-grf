@@ -579,9 +579,10 @@ class MultiOutPutClassifier_and_MGS(BaseOverSampler):
                         "Available values : 'EmpCov','InvWeightCov','LWCov','OASCov','TraceCov','IdCov','ExpCov' "
                     )
         # sampling all new points
-        u = np.random.normal(loc=0, scale=1, size=(len(indices), dimension_continuous))
+       
         # new_samples = [mus[central_point] + As[central_point].dot(u[central_point]) for central_points in indices]
         indices = np.random.randint(n_minoritaire, size=n_synthetic_sample)
+        u = np.random.normal(loc=0, scale=1, size=(len(indices), dimension_continuous))
         new_samples = np.zeros((n_synthetic_sample, dimension_continuous))
         for i, central_point in enumerate(indices):
             #u = np.random.normal(loc=0, scale=1, size=dimension_continuous)
