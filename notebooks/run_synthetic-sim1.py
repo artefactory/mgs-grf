@@ -5,13 +5,14 @@ sys.path.insert(1, os.path.abspath(os.path.join(os.getcwd(), os.pardir)))
 from pathlib import Path
 
 import numpy as np
-from sklearn.model_selection import ShuffleSplit,StratifiedShuffleSplit
+from sklearn.model_selection import ShuffleSplit, StratifiedShuffleSplit
 from imblearn.over_sampling import RandomOverSampler
-from imblearn.over_sampling import SMOTENC,SMOTE
+from imblearn.over_sampling import SMOTENC, SMOTE
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.neighbors import KNeighborsClassifier
-#from drf import drf
+
+# from drf import drf
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import FunctionTransformer
 import lightgbm as lgb
@@ -28,34 +29,38 @@ from oversampling_strategies.forest_for_categorical import DrfSk
 ##################################################
 ##################################################
 categorical_handling = True
-n_samples=5000
+n_samples = 5000
 n_iter = 20
 
-dimensions = [5,10,20,30,50,100,150,200]
+dimensions = [5, 10, 20, 30, 50, 100, 150, 200]
 for dimension in dimensions:
-    K_MGS = dimension+1
+    K_MGS = dimension + 1
     llambda_MGS = 1.0
-    print('Value K_MGS : ', K_MGS)
-    numeric_features =  np.arange(0,dimension,1)
+    print("Value K_MGS : ", K_MGS)
+    numeric_features = np.arange(0, dimension, 1)
     categorical_features = [-1]
-    clf = lgb.LGBMClassifier(verbosity=-1,n_jobs=5,random_state=0)
-    balanced_clf = lgb.LGBMClassifier(class_weight='balanced',verbosity=-1,n_jobs=5,random_state=0)
+    clf = lgb.LGBMClassifier(verbosity=-1, n_jobs=5, random_state=0)
+    balanced_clf = lgb.LGBMClassifier(
+        class_weight="balanced", verbosity=-1, n_jobs=5, random_state=0
+    )
 
-    output_dir_path_subsampled = "../saved_experiments_categorial_features/2025-sim1/normal/dimension_"+str(dimension) #drfsk-extra-max_f-1
+    output_dir_path_subsampled = (
+        "../saved_experiments_categorial_features/2025-sim1/normal/dimension_"
+        + str(dimension)
+    )  # drfsk-extra-max_f-1
     Path(output_dir_path_subsampled).mkdir(parents=True, exist_ok=True)
     init_name_file_subsampled = "2024-10-01-synthetic_"
-    
+
     ##################################################
     ##################################################
 
-    if categorical_handling :
+    if categorical_handling:
+
         def to_str(x):
             return x.astype(str)
 
-
         def to_float(x):
             return x.astype(float)
-
 
         fun_tr_str = FunctionTransformer(to_str)
         fun_tr_float = FunctionTransformer(to_float)
@@ -74,28 +79,39 @@ for dimension in dimensions:
         )
 
         model = Pipeline(steps=[("preprocessor", preprocessor), ("rf", clf)])
-        balanced_model = Pipeline(steps=[("preprocessor", preprocessor), ("rf", balanced_clf)])
-        
+        balanced_model = Pipeline(
+            steps=[("preprocessor", preprocessor), ("rf", balanced_clf)]
+        )
+
     else:
-        model=clf
+        model = clf
         balanced_model = balanced_clf
 
     ################################
-    print('******'*10)
-    print('******'*10)
-    print('Dimension : ',dimension)
+    print("******" * 10)
+    print("******" * 10)
+    print("Dimension : ", dimension)
     for i in range(n_iter):
-        X_final, target_numeric, w_gauss = generate_initial_data_onecat(dimension_continuous=dimension,n_samples=n_samples,random_state=i)
+        X_final, target_numeric, w_gauss = generate_initial_data_onecat(
+            dimension_continuous=dimension, n_samples=n_samples, random_state=i
+        )
         X_final = X_final.astype(object)
 
         list_oversampling_and_params = [
             ("None", NoSampling(), {}, model),
             ("CW", NoSampling(), {}, balanced_model),
-            ('ROS', RandomOverSampler(sampling_strategy="minority",random_state=i),{}, model),
+            (
+                "ROS",
+                RandomOverSampler(sampling_strategy="minority", random_state=i),
+                {},
+                model,
+            ),
             (
                 "SmoteNC (K=5)",
                 SMOTENC(
-                    k_neighbors=5, categorical_features=categorical_features, random_state=i
+                    k_neighbors=5,
+                    categorical_features=categorical_features,
+                    random_state=i,
                 ),
                 {},
                 model,
@@ -108,7 +124,7 @@ for dimension in dimensions:
                     categorical_features=categorical_features,
                     Classifier=KNeighborsClassifier(n_neighbors=1),
                     random_state=i,
-                    kind_cov = 'EmpCov',
+                    kind_cov="EmpCov",
                     mucentered=True,
                 ),
                 {},
@@ -122,15 +138,41 @@ for dimension in dimensions:
                     categorical_features=categorical_features,
                     Classifier=KNeighborsClassifier(n_neighbors=5),
                     random_state=i,
-                    kind_cov = 'EmpCov',
+                    kind_cov="EmpCov",
                     mucentered=True,
                 ),
                 {},
                 model,
             ),
-            ('MGS-NC(mu)(d+1)(EmpCov)',WMGS_NC_cov(K=K_MGS,llambda=llambda_MGS,kind_cov = 'EmpCov',mucentered=True,version=1,categorical_features=categorical_features,random_state=i),{},model),
-            ('MGS-NC(mu)(5)(EmpCov)',WMGS_NC_cov(K=5,llambda=llambda_MGS,kind_cov = 'EmpCov',mucentered=True,version=1,categorical_features=categorical_features,random_state=i),{},model),
-            #(
+            (
+                "MGS-NC(mu)(d+1)(EmpCov)",
+                WMGS_NC_cov(
+                    K=K_MGS,
+                    llambda=llambda_MGS,
+                    kind_cov="EmpCov",
+                    mucentered=True,
+                    version=1,
+                    categorical_features=categorical_features,
+                    random_state=i,
+                ),
+                {},
+                model,
+            ),
+            (
+                "MGS-NC(mu)(5)(EmpCov)",
+                WMGS_NC_cov(
+                    K=5,
+                    llambda=llambda_MGS,
+                    kind_cov="EmpCov",
+                    mucentered=True,
+                    version=1,
+                    categorical_features=categorical_features,
+                    random_state=i,
+                ),
+                {},
+                model,
+            ),
+            # (
             #    "MGS(mu)(d+1)(EmpCov) drf",
             #    MultiOutPutClassifier_and_MGS(
             #        K=K_MGS,
@@ -150,31 +192,35 @@ for dimension in dimensions:
             #    ),
             #    {},
             #    model,
-            #),
+            # ),
             (
-            "MGS(mu)(d+1)(EmpCov) DRFsk classique (mtry=None)",
-            MultiOutPutClassifier_and_MGS(
-                K=K_MGS,
-                llambda=llambda_MGS,
-                categorical_features=categorical_features,
-                Classifier=DrfSk(random_state=i,n_jobs=5,max_features=None), #max_features=1.0
-                random_state=i,
-                kind_cov = 'EmpCov',
-                mucentered=True,
-                to_encode=False,
-                to_encode_onehot=False,
-                bool_rf=False,
-                bool_rf_str=False,
-                bool_rf_regressor=False,
-                bool_drf=False,
-                fit_nn_on_continuous_only= True,
+                "MGS(mu)(d+1)(EmpCov) DRFsk classique (mtry=None)",
+                MultiOutPutClassifier_and_MGS(
+                    K=K_MGS,
+                    llambda=llambda_MGS,
+                    categorical_features=categorical_features,
+                    Classifier=DrfSk(
+                        random_state=i, n_jobs=5, max_features=None
+                    ),  # max_features=1.0
+                    random_state=i,
+                    kind_cov="EmpCov",
+                    mucentered=True,
+                    to_encode=False,
+                    to_encode_onehot=False,
+                    bool_rf=False,
+                    bool_rf_str=False,
+                    bool_rf_regressor=False,
+                    bool_drf=False,
+                    fit_nn_on_continuous_only=True,
+                ),
+                {},
+                model,
             ),
-            {},
-            model,
-            ),
-            ]
-        
-        splitter_stratified = StratifiedShuffleSplit(n_splits=1, test_size=.2, random_state=i)
+        ]
+
+        splitter_stratified = StratifiedShuffleSplit(
+            n_splits=1, test_size=0.2, random_state=i
+        )
         name_file = init_name_file_subsampled + str(i) + ".npy"
         run_eval(
             output_dir=output_dir_path_subsampled,
@@ -183,17 +229,10 @@ for dimension in dimensions:
             y=target_numeric.ravel(),
             list_oversampling_and_params=list_oversampling_and_params,
             splitter=splitter_stratified,
-            categorical_features=categorical_features,bool_to_save_data=True,bool_to_save_runing_time=True,
-            y_splitter=None,#np.hstack((target_numeric.reshape(-1,1),w_gauss.reshape(-1,1))),
+            categorical_features=categorical_features,
+            bool_to_save_data=True,
+            bool_to_save_runing_time=True,
+            y_splitter=None,  # np.hstack((target_numeric.reshape(-1,1),w_gauss.reshape(-1,1))),
             to_standard_scale=False,
         )
-print('END')
-
-
-
-
-
-
-
-
-
+print("END")
