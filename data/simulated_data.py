@@ -470,89 +470,6 @@ def generate_initial_data_twocat_normal_case6(n_samples,mean,cov,random_state=12
 ##########################################################################################
 ##########################################################################################
 
-def generate_initial_data_onecat_v2_2025_02_11(dimension_continuous,n_samples,random_state=123,verbose=0):
-    np.random.seed(random_state)
-    Xf = np.random.normal(loc=2,scale=3,size=(n_samples,1))
-    for i in range(dimension_continuous-4):
-        np.random.seed(seed=random_state+20+i)
-        curr_covariate = np.random.normal(loc=2,scale=3,size=(n_samples,1))
-        Xf = np.hstack((Xf,curr_covariate))
-        
-    z_p1 = np.eye(3) 
-    #z_p1[2,2]=0.1
-    z_p2 = np.eye(3) 
-    #z_p2[0,0]=0.1
-    z_p3 = np.eye(3) 
-    #z_p3[1,1]=0.1
-    mu_p1 = np.array([4,4,6])
-    mu_p2 = np.array([1,1,1])
-    mu_p3 = np.array([7,7,7])
-    
-    X_gmm,z_plan = gmm_sampling(n_samples=n_samples,z=[24/50,24/50,2/50],
-                         mus= [mu_p1,mu_p2,mu_p3],covs =[z_p1,z_p2,z_p2] )
-    Xf = np.hstack((X_gmm,Xf))
-    ### Feature categorical 
-    indices = np.arange(0,n_samples,1,dtype=int)
-    s1 = indices[z_plan==0]
-    s2= indices[z_plan==1]
-    s3= indices[z_plan==2]
-    Xf_plan1 = Xf[s1,:]
-    Xf_plan2 = Xf[s2,:]
-    Xf_plan3 = Xf[s3,:]
-
-    ## PLAN 1 :
-    print("#####")
-    #print('Xf_plan1 : ', Xf_plan1[:100,:3])
-    z_feature_cat_uniform_plan1, z_feature_cat_uniform_numeric_plan1 = generate_synthetic_features_logreg(
-        X=Xf_plan1,index_informatives=[0,1],list_modalities=['BC','A'],beta=np.array([-2,-2]),treshold=.5,intercept=10.2
-    ) 
-    print('z_feature_cat_uniform_plan1 : ', Counter(z_feature_cat_uniform_plan1))
-    n_maj_plan1 = len(z_feature_cat_uniform_plan1[z_feature_cat_uniform_plan1=='BC'])
-    z_feature_cat_uniform_plan1[z_feature_cat_uniform_plan1=='BC'] = np.random.choice(['B','C'], n_maj_plan1, replace=True)
-    target_numeric_plan1 = np.zeros((len(z_feature_cat_uniform_plan1),),dtype=int)
-    target_numeric_plan1[z_feature_cat_uniform_plan1=='A'] = 1
-    print('target_numeric_plan1 : ', Counter(target_numeric_plan1))
-    print("#####")
-
-    ## PLAN 2 : 
-    z_feature_cat_uniform_plan2, z_feature_cat_uniform_numeric_plan2 = generate_synthetic_features_logreg(
-        X=Xf_plan2,index_informatives=[1,2],list_modalities=['AC','B'],beta=np.array([-1.5,-3]),treshold=.5,intercept=-1.8
-    ) 
-    print('z_feature_cat_uniform_plan2 : ', Counter(z_feature_cat_uniform_plan2))
-    n_maj_plan2 = len(z_feature_cat_uniform_plan2[z_feature_cat_uniform_plan2=='AC'])
-    z_feature_cat_uniform_plan2[z_feature_cat_uniform_plan2=='AC'] = np.random.choice(['A','C'], n_maj_plan2, replace=True)
-    target_numeric_plan2 = np.zeros((len(z_feature_cat_uniform_plan2),),dtype=int)
-    target_numeric_plan2[z_feature_cat_uniform_plan2=='B'] = 1
-    print('target_numeric_plan2 : ', Counter(target_numeric_plan2))
-    print("#####")
-    
-    ## PLAN 3 :
-    z_feature_cat_uniform_plan3, z_feature_cat_uniform_numeric_plan3 = generate_synthetic_features_logreg(
-        X=Xf_plan3,index_informatives=[0,2],list_modalities=['AB','C'],beta=np.array([-1,-1]),treshold=.5,intercept=13.9
-    ) 
-    print('z_feature_cat_uniform_plan3 : ', Counter(z_feature_cat_uniform_plan3))
-    n_maj_plan3 = len(z_feature_cat_uniform_plan3[z_feature_cat_uniform_plan3=='AB'])
-    z_feature_cat_uniform_plan3[z_feature_cat_uniform_plan3=='AB'] = np.random.choice(['A','B'], n_maj_plan3, replace=True)
-    target_numeric_plan3 = np.zeros((len(z_feature_cat_uniform_plan3),),dtype=int)
-    target_numeric_plan3[z_feature_cat_uniform_plan3=='C'] = 1
-    print('target_numeric_plan3 : ', Counter(target_numeric_plan3))
-    print("#####")
-
-    ## final     
-    X_final_plan1 = np.hstack((Xf_plan1,z_feature_cat_uniform_plan1.reshape(-1,1)))
-    X_final_plan2 = np.hstack((Xf_plan2,z_feature_cat_uniform_plan2.reshape(-1,1)))
-    X_final_plan3 = np.hstack((Xf_plan3,z_feature_cat_uniform_plan3.reshape(-1,1)))
-    X_final = np.vstack((X_final_plan1,X_final_plan2,X_final_plan3))
-    
-    target_numeric = np.hstack((target_numeric_plan1,target_numeric_plan2,target_numeric_plan3))
-    target_numeric = target_numeric.astype(int)
-    print('target_numeric : ', target_numeric)
-    
-    if verbose==0:
-        print("*************"*8)
-        print('Composition of the target ', Counter(target_numeric))
-    #return X_final,target,target_numeric
-    return X_final,target_numeric
 
 def gmm_sampling(n_samples,z,mus,covs):
     components = np.random.choice(list(range(len(z))),size=n_samples,replace=True,p=z)
@@ -563,7 +480,7 @@ def gmm_sampling(n_samples,z,mus,covs):
         list_sample.append(sample)
     return np.array(list_sample),components
 
-def generate_initial_data_onecat_2025_02_28(dimension_continuous,n_samples,random_state=123,verbose=0):
+def generate_initial_data_onecat(dimension_continuous,n_samples,random_state=123,verbose=0):
     np.random.seed(random_state)
     #Xf=np.random.multivariate_normal(mean=2*np.ones(dimension_continuous-3),cov=3*np.eye(dimension_continuous-3),size=n_samples)
     Xf = np.random.normal(loc=6,scale=4,size=(n_samples,1))
