@@ -1,4 +1,3 @@
-import math
 
 import numpy as np
 from imblearn.over_sampling import SMOTE
@@ -6,11 +5,7 @@ from imblearn.over_sampling import SMOTE
 from imblearn.over_sampling.base import BaseOverSampler
 from sklearn.neighbors import NearestNeighbors
 from sklearn.metrics import roc_auc_score
-from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder
-from sklearn.preprocessing import StandardScaler
-from sklearn.covariance import ledoit_wolf,oas,empirical_covariance
-from imblearn.utils import check_target_type
-from collections import Counter
+
 
 class CVSmoteModel(object):
     """
