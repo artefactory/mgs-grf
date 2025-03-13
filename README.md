@@ -1,6 +1,6 @@
 ## Paper name.
 
-Repository for [????](https://abdoulaye1103.github.io/) paper.
+Repository for MGS-GRF paper.
 
 In praticular, you will find code to reproduce the paper experiments as well as an nice implementation of our *new* and *efficient* strategy for your projects.
 ## ⭐ Table of Contents
@@ -11,12 +11,9 @@ In praticular, you will find code to reproduce the paper experiments as well as 
 ## ⭐ Getting Started
 
 If you want to reproduce our paper experiments:
-  - the notebooks [here](notebooks/classif_experiments.ipynb) and [here](notebooks/distances_experiments.ipynb) reproduce the experiments
-  - thise [code](./validation) contains implementation the protocols used for the numerical experiments of our article. 
-
-In order to use our MGS strategy:
-  - this [notebook](notebooks/resampling_example.ipynb) illustrates how to use it
-  - the strategy is implemented [here](./oversampling_strategies/)
+  - Section 4.2 : the [pyhton file](notebooks/run_synthetic-sim2.py) reproduce the experiments (data sets, oversampling and traing). Then the results can be analyzed [here](notebooks/2025-sim2-plot.ipynb).
+  - Section 4.3 : the   [pyhton file](notebooks/run_synthetic-sim1.py) reproduce the experiments (data sets, oversampling and traing). Then the results can be analyzed [here](notebooks/2025-sim1-plot.ipynb).
+  - Section 5 : the [pyhton file](notebooks/run_protocol-final.py) reproduce the experiments (data sets, oversampling and traing). Then the results can be analyzed [here](notebooks/2025_res_exp_cat.ipynb).
 
 ## ⭐ Data sets
 
