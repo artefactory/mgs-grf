@@ -11,9 +11,9 @@ In praticular, you will find code to reproduce the paper experiments as well as 
 ## ⭐ Getting Started
 
 If you want to reproduce our paper experiments:
-  - Section 4.2 : the [pyhton file](notebooks/run_synthetic-sim2.py) reproduce the experiments (data sets, oversampling and traing). Then the results can be analyzed [here](notebooks/2025-sim2-plot.ipynb).
-  - Section 4.3 : the   [pyhton file](notebooks/run_synthetic-sim1.py) reproduce the experiments (data sets, oversampling and traing). Then the results can be analyzed [here](notebooks/2025-sim1-plot.ipynb).
-  - Section 5 : the [pyhton file](notebooks/run_protocol-final.py) reproduce the experiments (data sets, oversampling and traing). Then the results can be analyzed [here](notebooks/2025_res_exp_cat.ipynb).
+  - Section 4.2 : the [pyhton file](protocols/run_synthetic_coh.py) reproduce the experiments (data sets, oversampling and traing). Then the results can be analyzed [here](notebooks/2025-sim2-plot.ipynb).
+  - Section 4.3 : the   [pyhton file](protocols/run_synthetic_asso.py) reproduce the experiments (data sets, oversampling and traing). Then the results can be analyzed [here](notebooks/2025-sim1-plot.ipynb).
+  - Section 5 : the [pyhton file](protocols/run_protocol-final.py) reproduce the experiments (data sets, oversampling and traing). Then the results can be analyzed [here](notebooks/2025_res_exp_cat.ipynb).
 
 ## ⭐ Data sets
 
