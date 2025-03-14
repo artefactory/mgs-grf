@@ -188,7 +188,7 @@ for i in range(n_iter):
                 K=K_MGS,
                 llambda=llambda_MGS,
                 categorical_features=categorical_features,
-                Classifier=DrfSk(random_state=i, n_jobs=5),
+                Classifier=DrfSk(random_state=0, n_jobs=5),
                 random_state=i,
                 kind_cov="EmpCov",
                 mucentered=True,

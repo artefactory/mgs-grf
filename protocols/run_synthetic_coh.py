@@ -29,7 +29,7 @@ from oversampling_strategies.categorical_oversampler import (
 from oversampling_strategies.forest_for_categorical import DrfSk, KNNTies
 
 from validation.classif_experiments import run_eval
-from data.simulated_data import generate_initial_data_twocat_normal_case2
+from data.simulated_data import generate_initial_data_twocat_normal_case2  ## Run for case2 !!
 
 
 def to_str(x):
@@ -59,7 +59,7 @@ balanced_clf = lgb.LGBMClassifier(
 )
 
 # all features
-output_dir_path = "../saved_experiments_categorial_features/2025-Sim2/normal/lgbm/case2"
+output_dir_path = "../saved_experiments_categorial_features/sim_coh/2025/lgbm/5ksamples/case2"
 Path(output_dir_path).mkdir(parents=True, exist_ok=True)
 init_name_file_original = "2027-01-07-lgbm_"
 

@@ -45,7 +45,7 @@ for dimension in dimensions:
     )
 
     output_dir_path_subsampled = (
-        "../saved_experiments_categorial_features/2025-sim1/normal/dimension_"
+        "../saved_experiments_categorial_features/sim_asso/2025/normal/dimension_"
         + str(dimension)
     )  # drfsk-extra-max_f-1
     Path(output_dir_path_subsampled).mkdir(parents=True, exist_ok=True)
