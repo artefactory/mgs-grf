@@ -28,8 +28,8 @@ from oversampling_strategies.forest_for_categorical import DrfSk, KNNTies
 # from sklearn.neighbors import Ne
 
 
-from validation.classif_experiments import run_eval, read_subsampling_indices
-from data.data import load_BankMarketing_data
+from validation.classif_experiments import run_eval, read_subsampling_indices, subsample_to_ratio_indices
+from data.data import load_BankChurners_data
 
 
 def to_str(x):
@@ -42,13 +42,13 @@ def to_float(x):
 
 ################# INitialisation #################
 
-initial_X, initial_y = load_BankMarketing_data()
-numeric_features = [0, 5, 11, 12, 13, 14]
-categorical_features = [1, 2, 3, 4, 6, 7, 8, 9, 10, 15]
+#initial_X, initial_y = load_BankMarketing_data()
+#numeric_features = [0, 5, 11, 12, 13, 14]
+#categorical_features = [1, 2, 3, 4, 6, 7, 8, 9, 10, 15]
 
-# initial_X,initial_y = load_BankChurners_data()
-# numeric_features = [0,2,7,8,9,10,11,12,13,14,15,16,17,18]
-# categorical_features = [1,3,4,5,6]
+initial_X,initial_y = load_BankChurners_data()
+numeric_features = [0,2,7,8,9,10,11,12,13,14,15,16,17,18]
+categorical_features = [1,3,4,5,6]
 
 ##################################
 K_MGS = max(len(numeric_features) + 1, 5)
@@ -56,37 +56,35 @@ llambda_MGS = 1.0
 print("Value K_MGS : ", K_MGS)
 print("llambda_MGS  : ", llambda_MGS)
 
-clf = lgb.LGBMClassifier(verbosity=-1, n_jobs=8, random_state=0)
+clf = lgb.LGBMClassifier(n_estimators=100,verbosity=-1, n_jobs=8, random_state=0)
 balanced_clf = lgb.LGBMClassifier(
-    class_weight="balanced", verbosity=-1, n_jobs=8, random_state=0
+    n_estimators=100,class_weight="balanced", verbosity=-1, n_jobs=8, random_state=0
 )
 n_iter = 20
 
 # output_dir_path =  "../saved_experiments_categorial_features/2024-06-19_BankMarketing"
-# bankmarketing_sub_original_to_1
 # indices_kept_1 = subsample_to_ratio_indices(X=X,y=y,ratio=0.01,seed_sub=5,
 #    output_dir_subsampling=output_dir_path,
 #    name_subsampling_file='bankmarketing_sub_original_to_1')
 
 
-# "../saved_experiments_categorial_features/2024-06-19_BankChurners"
-#'BankChurners_sub_original_to_1'
-# indices_kept_1 = subsample_to_ratio_indices(X=X_bankChurners,y=y_bankChurners,ratio=0.01,seed_sub=5,
-#    output_dir_subsampling=output_dir_path,
-#    name_subsampling_file='BankChurners_sub_original_to_1')
+output_dir_path = "../saved_experiments_categorial_features/2024-06-19_BankChurners"
+indices_kept_1 = subsample_to_ratio_indices(X=initial_X,y=initial_y,ratio=0.01,seed_sub=5,
+                                            output_dir_subsampling=output_dir_path,
+                                            name_subsampling_file='BankChurners_sub_original_to_1')
 
 if True:
     X, y = read_subsampling_indices(
         X=initial_X,
         y=initial_y,
-        dir_subsampling="../saved_experiments_categorial_features/2024-06-19_BankMarketing",
-        name_subsampling_file="bankmarketing_sub_original_to_1",
+        dir_subsampling="../saved_experiments_categorial_features/2024-06-19_BankChurners",
+        name_subsampling_file="BankChurners_sub_original_to_1",
         get_indexes=False,
     )
 else:
     X, y = initial_X, initial_y
 
-output_dir_path = "../saved_experiments_categorial_features/2024-06-19_BankMarketing/2025/lgbm/subsample_to_1"
+output_dir_path = "../saved_experiments_categorial_features/2024-06-19_BankChurners/2025/subsample_to_1"
 Path(output_dir_path).mkdir(parents=True, exist_ok=True)
 init_name_file_original = "2024-11-30-lgbm_"
 
