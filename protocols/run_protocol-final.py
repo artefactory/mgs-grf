@@ -62,13 +62,13 @@ balanced_clf = lgb.LGBMClassifier(
 )
 n_iter = 20
 
-# output_dir_path =  "../saved_experiments_categorial_features/2024-06-19_BankMarketing"
+# output_dir_path =  "../saved_experiments_categorial_features/BankMarketing"
 # indices_kept_1 = subsample_to_ratio_indices(X=X,y=y,ratio=0.01,seed_sub=5,
 #    output_dir_subsampling=output_dir_path,
 #    name_subsampling_file='bankmarketing_sub_original_to_1')
 
 
-output_dir_path = "../saved_experiments_categorial_features/2024-06-19_BankChurners"
+output_dir_path = "../saved_experiments_categorial_features/BankChurners"
 indices_kept_1 = subsample_to_ratio_indices(X=initial_X,y=initial_y,ratio=0.01,seed_sub=5,
                                             output_dir_subsampling=output_dir_path,
                                             name_subsampling_file='BankChurners_sub_original_to_1')
@@ -77,14 +77,14 @@ if True:
     X, y = read_subsampling_indices(
         X=initial_X,
         y=initial_y,
-        dir_subsampling="../saved_experiments_categorial_features/2024-06-19_BankChurners",
+        dir_subsampling="../saved_experiments_categorial_features/BankChurners",
         name_subsampling_file="BankChurners_sub_original_to_1",
         get_indexes=False,
     )
 else:
     X, y = initial_X, initial_y
 
-output_dir_path = "../saved_experiments_categorial_features/2024-06-19_BankChurners/2025/subsample_to_1"
+output_dir_path = "../saved_experiments_categorial_features/BankChurners/2025/subsample_to_1"
 Path(output_dir_path).mkdir(parents=True, exist_ok=True)
 init_name_file_original = "2024-11-30-lgbm_"
 
