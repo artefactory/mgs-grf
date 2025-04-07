@@ -1,33 +1,25 @@
 import os
 import sys
-
-
 sys.path.insert(1, os.path.abspath(os.path.join(os.getcwd(), os.pardir)))
 from pathlib import Path
-from collections import Counter
 
 import numpy as np
 import pandas as pd
-
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.preprocessing import FunctionTransformer
 from sklearn.compose import ColumnTransformer
-# from drf import drf
-
-from sklearn.ensemble import RandomForestClassifier
-import lightgbm as lgb
 from sklearn.model_selection import ShuffleSplit
 from imblearn.under_sampling import RandomUnderSampler
 from imblearn.over_sampling import RandomOverSampler, SMOTENC
-from oversampling_strategies.categorical_oversampler import (
+import lightgbm as lgb
+
+from protocols.baselines import (
     NoSampling,
-    MultiOutPutClassifier_and_MGS,
     WMGS_NC_cov,
 )
-from oversampling_strategies.forest_for_categorical import DrfSk, KNNTies
-
+from mgs_grf.over_sampling import MGSGRFOverSampler
+from mgs_grf.forest_for_categorical import DrfSk, KNNTies
 from validation.classif_experiments import run_eval
 from data.simulated_data import generate_initial_data_twocat_normal_case2  ## Run for case2 !!
 
@@ -121,7 +113,7 @@ for i in range(n_iter):
         ),
         (
             "MGS(mu)(d+1)(EmpCov) 1-NN",
-            MultiOutPutClassifier_and_MGS(
+            MGSGRFOverSampler(
                 K=K_MGS,
                 llambda=llambda_MGS,
                 categorical_features=categorical_features,
@@ -136,7 +128,7 @@ for i in range(n_iter):
         ),
         (
             "MGS(mu)(d+1)(EmpCov) 5-NN",
-            MultiOutPutClassifier_and_MGS(
+            MGSGRFOverSampler(
                 K=K_MGS,
                 llambda=llambda_MGS,
                 categorical_features=categorical_features,
@@ -165,7 +157,7 @@ for i in range(n_iter):
         ),
         # (
         #    "MGS(mu)(d+1)(EmpCov) drf",
-        #    MultiOutPutClassifier_and_MGS(
+        #    MGSGRFOverSampler(
         #        K=K_MGS,
         #        llambda=llambda_MGS,
         #        categorical_features=categorical_features,
@@ -186,7 +178,7 @@ for i in range(n_iter):
         # ),
         (
             "MGS(mu)(d+1)(EmpCov) DRFsk classique (mtry=def=sqrt)",
-            MultiOutPutClassifier_and_MGS(
+            MGSGRFOverSampler(
                 K=K_MGS,
                 llambda=llambda_MGS,
                 categorical_features=categorical_features,

@@ -1,30 +1,27 @@
 import os
 import sys
-
 sys.path.insert(1, os.path.abspath(os.path.join(os.getcwd(), os.pardir)))
 from pathlib import Path
-
 import numpy as np
+
 from sklearn.model_selection import ShuffleSplit, StratifiedShuffleSplit
 from imblearn.over_sampling import RandomOverSampler
 from imblearn.over_sampling import SMOTENC, SMOTE
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.neighbors import KNeighborsClassifier
-
-# from drf import drf
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import FunctionTransformer
 import lightgbm as lgb
 
-from oversampling_strategies.categorical_oversampler import (
-    MultiOutPutClassifier_and_MGS,
+from protocols.baselines import (
     NoSampling,
     WMGS_NC_cov,
 )
+from mgs_grf.over_sampling import MGSGRFOverSampler
+from mgs_grf.forest_for_categorical import DrfSk, KNNTies
 from data.simulated_data import generate_initial_data_onecat
 from validation.classif_experiments import run_eval
-from oversampling_strategies.forest_for_categorical import DrfSk
 
 ##################################################
 ##################################################
@@ -118,7 +115,7 @@ for dimension in dimensions:
             ),
             (
                 "MGS(mu)(d+1)(EmpCov) 1-NN",
-                MultiOutPutClassifier_and_MGS(
+                MGSGRFOverSampler(
                     K=K_MGS,
                     llambda=llambda_MGS,
                     categorical_features=categorical_features,
@@ -132,7 +129,7 @@ for dimension in dimensions:
             ),
             (
                 "MGS(mu)(d+1)(EmpCov) 5-NN",
-                MultiOutPutClassifier_and_MGS(
+                MGSGRFOverSampler(
                     K=K_MGS,
                     llambda=llambda_MGS,
                     categorical_features=categorical_features,
@@ -174,7 +171,7 @@ for dimension in dimensions:
             ),
             # (
             #    "MGS(mu)(d+1)(EmpCov) drf",
-            #    MultiOutPutClassifier_and_MGS(
+            #    MGSGRFOverSampler(
             #        K=K_MGS,
             #        llambda=llambda_MGS,
             #        categorical_features=categorical_features,
@@ -195,7 +192,7 @@ for dimension in dimensions:
             # ),
             (
                 "MGS(mu)(d+1)(EmpCov) DRFsk classique (mtry=None)",
-                MultiOutPutClassifier_and_MGS(
+                MGSGRFOverSampler(
                     K=K_MGS,
                     llambda=llambda_MGS,
                     categorical_features=categorical_features,
