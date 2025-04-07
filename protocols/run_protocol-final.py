@@ -1,36 +1,25 @@
 import os
 import sys
-
-
 sys.path.insert(1, os.path.abspath(os.path.join(os.getcwd(), os.pardir)))
 from pathlib import Path
-from collections import Counter
-
-import numpy as np
-import pandas as pd
 
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.preprocessing import FunctionTransformer
 from sklearn.compose import ColumnTransformer
-# from drf import drf
-
-import lightgbm as lgb
 from sklearn.model_selection import StratifiedKFold
 from imblearn.under_sampling import RandomUnderSampler
 from imblearn.over_sampling import RandomOverSampler, SMOTENC
-from oversampling_strategies.categorical_oversampler import (
+import lightgbm as lgb
+
+from protocols.baselines import (
     NoSampling,
-    MultiOutPutClassifier_and_MGS,
     WMGS_NC_cov,
 )
-from oversampling_strategies.forest_for_categorical import DrfSk, KNNTies
-# from sklearn.neighbors import Ne
-
-
+from mgs_grf.over_sampling import MGSGRFOverSampler
+from mgs_grf.forest_for_categorical import DrfSk, KNNTies
 from validation.classif_experiments import run_eval, read_subsampling_indices, subsample_to_ratio_indices
 from data.data import load_BankChurners_data
-
 
 def to_str(x):
     return x.astype(str)
@@ -39,9 +28,7 @@ def to_str(x):
 def to_float(x):
     return x.astype(float)
 
-
 ################# INitialisation #################
-
 #initial_X, initial_y = load_BankMarketing_data()
 #numeric_features = [0, 5, 11, 12, 13, 14]
 #categorical_features = [1, 2, 3, 4, 6, 7, 8, 9, 10, 15]
@@ -49,7 +36,6 @@ def to_float(x):
 initial_X,initial_y = load_BankChurners_data()
 numeric_features = [0,2,7,8,9,10,11,12,13,14,15,16,17,18]
 categorical_features = [1,3,4,5,6]
-
 ##################################
 K_MGS = max(len(numeric_features) + 1, 5)
 llambda_MGS = 1.0
@@ -61,13 +47,10 @@ balanced_clf = lgb.LGBMClassifier(
     n_estimators=100,class_weight="balanced", verbosity=-1, n_jobs=8, random_state=0
 )
 n_iter = 20
-
 # output_dir_path =  "../saved_experiments_categorial_features/BankMarketing"
 # indices_kept_1 = subsample_to_ratio_indices(X=X,y=y,ratio=0.01,seed_sub=5,
 #    output_dir_subsampling=output_dir_path,
 #    name_subsampling_file='bankmarketing_sub_original_to_1')
-
-
 output_dir_path = "../saved_experiments_categorial_features/BankChurners"
 indices_kept_1 = subsample_to_ratio_indices(X=initial_X,y=initial_y,ratio=0.01,seed_sub=5,
                                             output_dir_subsampling=output_dir_path,
@@ -87,8 +70,6 @@ else:
 output_dir_path = "../saved_experiments_categorial_features/BankChurners/2025/subsample_to_1"
 Path(output_dir_path).mkdir(parents=True, exist_ok=True)
 init_name_file_original = "2024-11-30-lgbm_"
-
-
 ###############################################################
 ########################### RUN ###############################
 ###############################################################
@@ -140,7 +121,7 @@ for i in range(n_iter):
         ),
         (
             "MGS(mu)(d+1)(EmpCov) 1-NN",
-            MultiOutPutClassifier_and_MGS(
+            MGSGRFOverSampler(
                 K=K_MGS,
                 llambda=llambda_MGS,
                 categorical_features=categorical_features,
@@ -155,7 +136,7 @@ for i in range(n_iter):
         ),
         (
             "MGS(mu)(d+1)(EmpCov) 5-NN",
-            MultiOutPutClassifier_and_MGS(
+            MGSGRFOverSampler(
                 K=K_MGS,
                 llambda=llambda_MGS,
                 categorical_features=categorical_features,
@@ -184,7 +165,7 @@ for i in range(n_iter):
         ),
         (
             "MGS(mu)(d+1)(EmpCov) DRFsk classique (mtry=def=sqrt)",
-            MultiOutPutClassifier_and_MGS(
+            MGSGRFOverSampler(
                 K=K_MGS,
                 llambda=llambda_MGS,
                 categorical_features=categorical_features,
