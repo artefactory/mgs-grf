@@ -9,9 +9,6 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.covariance import ledoit_wolf, oas, empirical_covariance
 from imblearn.utils import check_target_type
 
-
-
-
 class MGSGRFOverSampler(BaseOverSampler):
     """
     MGS-GRF oversampling strategy.
