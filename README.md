@@ -1,6 +1,6 @@
 ## Paper name.
 
-Repository for MGS-GRF paper.
+Repository for [MGS-GRF paper](https://arxiv.org/pdf/2503.22730).
 
 In praticular, you will find code to reproduce the paper experiments as well as an nice implementation of our *new* and *efficient* strategy for your projects.
 ## ⭐ Table of Contents
@@ -11,9 +11,9 @@ In praticular, you will find code to reproduce the paper experiments as well as 
 ## ⭐ Getting Started
 
 If you want to reproduce our paper experiments:
-  - Section 4.2 : the [pyhton file](protocols/run_synthetic_coh.py) reproduce the experiments (data sets, oversampling and traing). Then the results can be analyzed [here](notebooks/res_coh.ipynb).
-  - Section 4.3 : the   [pyhton file](protocols/run_synthetic_asso.py) reproduce the experiments (data sets, oversampling and traing). Then the results can be analyzed [here](notebooks/res_asso.ipynb).
-  - Section 5 : the [pyhton file](protocols/run_protocol-final.py) reproduce the experiments (data sets, oversampling and traing). Then the results can be analyzed [here](notebooks/res_real_data.ipynb).
+  - Section 4.2 : the [pyhton file](protocols/run_synthetic_coherence.py) reproduce the experiments (data sets, oversampling and traing). Then the results can be analyzed [here](protocols/notebooks/res_coh.ipynb).
+  - Section 4.3 : the   [pyhton file](protocols/run_synthetic_association.py) reproduce the experiments (data sets, oversampling and traing). Then the results can be analyzed [here](protocols/notebooks/res_asso.ipynb).
+  - Section 5 : the [pyhton file](protocols/run_protocol-final.py) reproduce the experiments (data sets, oversampling and traing). Then the results can be analyzed [here](protocols/notebooks/res_real_data.ipynb).
 
 ## ⭐ Data sets
 
@@ -31,3 +31,11 @@ This work was done through a partenership between **Artefact Research Center** a
 :-------------------------:|:-------------------------:
 
 If you find the code usefull, please consider citing us :
+```
+@article{sakho2025harnessing,
+  title={Harnessing Mixed Features for Imbalance Data Oversampling: Application to Bank Customers Scoring},
+  author={Sakho, Abdoulaye and Malherbe, Emmanuel and Gauthier, Carl-Erik and Scornet, Erwan},
+  journal={arXiv preprint arXiv:2503.22730},
+  year={2025}
+}
+```
