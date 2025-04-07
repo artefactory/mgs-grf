@@ -379,9 +379,9 @@ class WMGS_NC_cov(BaseOverSampler):
         return oversampled_X, oversampled_y
     
 
-class MultiOutPutClassifier_and_MGS(BaseOverSampler):
+class MGSGRFOverSampler(BaseOverSampler):
     """
-    MultiOutPutClassifier and MGS
+    MGS-GRF oversampling strategy.
     """
 
     def __init__(
