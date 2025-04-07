@@ -15,7 +15,6 @@ from sklearn.metrics._pairwise_distances_reduction import ArgKminClassMode
 from sklearn.neighbors._base import _get_weights, NeighborsBase
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.utils._param_validation import StrOptions
-import time
 
 
 def iterative_random_choice(probas):

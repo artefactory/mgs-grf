@@ -4,7 +4,7 @@ import numpy as np
 
 from imblearn.over_sampling.base import BaseOverSampler
 from sklearn.neighbors import NearestNeighbors
-from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder
+from sklearn.preprocessing import OneHotEncoder
 from sklearn.covariance import ledoit_wolf, oas, empirical_covariance
 from imblearn.utils import check_target_type
 from collections import namedtuple  ## KNN

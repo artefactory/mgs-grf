@@ -5,9 +5,9 @@ sys.path.insert(1, os.path.abspath(os.path.join(os.getcwd(), os.pardir)))
 from pathlib import Path
 import numpy as np
 
-from sklearn.model_selection import ShuffleSplit, StratifiedShuffleSplit
+from sklearn.model_selection import StratifiedShuffleSplit
 from imblearn.over_sampling import RandomOverSampler
-from imblearn.over_sampling import SMOTENC, SMOTE
+from imblearn.over_sampling import SMOTENC
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.neighbors import KNeighborsClassifier
@@ -20,7 +20,7 @@ from protocols.baselines import (
     WMGS_NC_cov,
 )
 from mgs_grf.over_sampling import MGSGRFOverSampler
-from mgs_grf.forest_for_categorical import DrfSk, KNNTies
+from mgs_grf.forest_for_categorical import DrfSk
 from data.simulated_data import generate_initial_data_onecat
 from validation.classif_experiments import run_eval
 
