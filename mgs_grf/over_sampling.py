@@ -176,7 +176,7 @@ class MGSGRFOverSampler(BaseOverSampler):
                 ]
             elif self.kind_sampling == "cholesky":
                 As = np.linalg.cholesky(
-                    covs + 1e-10 * np.identity(dimension_continuous)
+                    covs + 1e-8 * np.identity(dimension_continuous)
                 )
             else:
                 raise ValueError(
