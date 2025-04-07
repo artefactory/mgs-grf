@@ -1,8 +1,24 @@
 ## Paper name.
+<div align="center">
 
-Repository for [MGS-GRF paper](https://arxiv.org/pdf/2503.22730).
+# Harnessing Mixed Features for Imbalance Data Oversampling: Application to Bank Customers Scoring
 
-In praticular, you will find code to reproduce the paper experiments as well as an nice implementation of our *new* and *efficient* strategy for your projects.
+
+Abdoulaye SAKHO<sup>1, 2</sup>, Emmanuel MALHERBE<sup>1</sup>, Carl-Erik GAUTHIER<sup>3</sup>, Erwan SCORNET<sup>2</sup> <br>
+ <sup>1</sup> <sub> Artefact Research Center, </sub> <br> <sup>2</sup> <sub>*LPSM* - Sorbonne Université,</sub> <sup>3</sup> <sub>Société Générale</sub>
+
+Preprint. <br>
+[[Full Paper]](https://arxiv.org/pdf/2503.22730) <br>
+
+</div>
+
+<p align="center"><img width="95%" src="doc/PLS-3.png" /></p>
+
+**Abstract:** *This study investigates rare event detection on tabular data within binary classification. Standard techniques to handle class imbalance include SMOTE, which generates synthetic samples from the minority class. However, SMOTE is intrinsically designed for continuous input variables. In fact, despite SMOTE-NC—its default extension to handle mixed features (continuous and categorical variables)—very few works propose procedures to synthesize mixed features. On the other hand, many
+real-world classification tasks, such as in banking sector, deal with mixed features, which have a significant impact on predictive performances. To this purpose, we introduce MGS-GRF, an oversampling strategy designed for mixed features. This method uses a kernel density estimator with locally estimated full-rank covariances to generate continuous features, while categorical ones are drawn from the original samples through a generalized random forest. Empirically, contrary to SMOTE-NC, we show that MGS-GRF exhibits two important properties: (i) the coherence i.e.
+the ability to only generate combinations of categorical features that are already present in the original dataset and (ii) association, i.e. the ability to preserve the dependence between continuous and categorical features. We also evaluate the predictive performances of LightGBM classifiers trained on data sets, augmented with synthetic samples from various strategies. Our comparison is performed on simulated and public realworld data sets, as well as on a private data set from a leading financial institution. We observe that synthetic procedures that have the properties of coherence and association display better predictive performances in terms of various predictive metrics (PR and ROC AUC...), with MGSGRF being the best one. Furthermore, our method exhibits promising results for the private banking application, with development pipeline being compliant with regulatory constraints.*
+
+You will find code to reproduce the paper experiments as well as an nice implementation of our *new* and *efficient* strategy for your projects.
 ## ⭐ Table of Contents
   - [Getting Started](#getting-started)
   - [Data sets](#data-sets)
