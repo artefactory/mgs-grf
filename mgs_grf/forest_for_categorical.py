@@ -1,13 +1,11 @@
 import numpy as np
 
-from sklearn.ensemble._forest import ForestClassifier, ForestRegressor
 from sklearn.ensemble import (
     RandomForestClassifier,
     RandomForestRegressor,
     ExtraTreesClassifier,
     ExtraTreesRegressor,
 )
-from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 from collections import namedtuple  ## KNN
 from sklearn.utils.arrayfuncs import _all_with_any_reduction_axis_1
