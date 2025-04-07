@@ -1,16 +1,10 @@
-import math
-
 import numpy as np
 from imblearn.over_sampling import SMOTE
 
 from imblearn.over_sampling.base import BaseOverSampler
 from sklearn.neighbors import NearestNeighbors
 from sklearn.metrics import roc_auc_score
-from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder
-from sklearn.preprocessing import StandardScaler
-from sklearn.covariance import ledoit_wolf,oas,empirical_covariance
-from imblearn.utils import check_target_type
-from collections import Counter
+
 
 class CVSmoteModel(object):
     """
@@ -144,8 +138,8 @@ class MGS(BaseOverSampler):
                 0
             ]  ## the central point is selected for the expectation and covariance matrix
             indices_neigh.extend(
-                #random.sample(range(1, self.K + 1), self.n_points)
-                np.random.choice(a=range(1, self.K + 1),size=self.n_points)
+                # random.sample(range(1, self.K + 1), self.n_points)
+                np.random.choice(a=range(1, self.K + 1), size=self.n_points)
             )  # The nearrest neighbor selected for the estimation
             indice_neighbors = neighbor_by_index[indice][indices_neigh]
             mu = (1 / self.K + 1) * X_positifs[indice_neighbors, :].sum(axis=0)
@@ -183,7 +177,7 @@ class MGS2(BaseOverSampler):
         sampling_strategy="auto",
         random_state=None,
         weighted_cov=False,
-        kind_sampling='cholesky'
+        kind_sampling="cholesky",
     ):
         """
         llambda is a float.
@@ -193,7 +187,7 @@ class MGS2(BaseOverSampler):
         self.llambda = llambda
         self.random_state = random_state
         self.weighted_cov = weighted_cov
-        self.kind_sampling=kind_sampling
+        self.kind_sampling = kind_sampling
 
     def _fit_resample(self, X, y=None, n_final_sample=None):
         """
@@ -255,20 +249,22 @@ class MGS2(BaseOverSampler):
             / (self.K + 1)
         )
 
-        if self.kind_sampling == 'svd':
-        # spectral decomposition of all covariances
-            eigen_values, eigen_vectors = np.linalg.eigh(covs) ## long
-            eigen_values[eigen_values > 1e-10] = eigen_values[eigen_values > 1e-10] ** .5
-            As = [eigen_vectors[i].dot(eigen_values[i]) for i in range(len(eigen_values))]
-        elif self.kind_sampling == 'cholesky' :
-            As = np.linalg.cholesky(
-                covs + 1e-10 * np.identity(dimension)
-            ) 
-        else: 
+        if self.kind_sampling == "svd":
+            # spectral decomposition of all covariances
+            eigen_values, eigen_vectors = np.linalg.eigh(covs)  ## long
+            eigen_values[eigen_values > 1e-10] = (
+                eigen_values[eigen_values > 1e-10] ** 0.5
+            )
+            As = [
+                eigen_vectors[i].dot(eigen_values[i]) for i in range(len(eigen_values))
+            ]
+        elif self.kind_sampling == "cholesky":
+            As = np.linalg.cholesky(covs + 1e-10 * np.identity(dimension))
+        else:
             raise ValueError(
-                    "kind_sampling of MGS not supported"
-                    "Available values : 'cholescky','svd' "
-                )
+                "kind_sampling of MGS not supported"
+                "Available values : 'cholescky','svd' "
+            )
         np.random.seed(self.random_state)
 
         indices = np.random.randint(n_minoritaire, size=n_synthetic_sample)

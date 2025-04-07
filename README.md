@@ -1,6 +1,6 @@
 ## Paper name.
 
-Repository for [????](https://abdoulaye1103.github.io/) paper.
+Repository for MGS-GRF paper.
 
 In praticular, you will find code to reproduce the paper experiments as well as an nice implementation of our *new* and *efficient* strategy for your projects.
 ## ⭐ Table of Contents
@@ -11,19 +11,16 @@ In praticular, you will find code to reproduce the paper experiments as well as 
 ## ⭐ Getting Started
 
 If you want to reproduce our paper experiments:
-  - the notebooks [here](notebooks/classif_experiments.ipynb) and [here](notebooks/distances_experiments.ipynb) reproduce the experiments
-  - thise [code](./validation) contains implementation the protocols used for the numerical experiments of our article. 
-
-In order to use our MGS strategy:
-  - this [notebook](notebooks/resampling_example.ipynb) illustrates how to use it
-  - the strategy is implemented [here](./oversampling_strategies/)
+  - Section 4.2 : the [pyhton file](protocols/run_synthetic_coh.py) reproduce the experiments (data sets, oversampling and traing). Then the results can be analyzed [here](notebooks/res_coh.ipynb).
+  - Section 4.3 : the   [pyhton file](protocols/run_synthetic_asso.py) reproduce the experiments (data sets, oversampling and traing). Then the results can be analyzed [here](notebooks/res_asso.ipynb).
+  - Section 5 : the [pyhton file](protocols/run_protocol-final.py) reproduce the experiments (data sets, oversampling and traing). Then the results can be analyzed [here](notebooks/res_real_data.ipynb).
 
 ## ⭐ Data sets
 
 The data sets of used for our article should be dowloaded  inside the *data/externals* folder. The data sets are available at the followings adresses :
 
 * [BankMarketing](https://archive.ics.uci.edu/dataset/222/bank+marketing)
-* [BankChurners]()
+* [BankChurners](https://www.kaggle.com/datasets/thedevastator/predicting-credit-card-customer-attrition-with-m)
 
 
 ## ⭐ Acknowledgements

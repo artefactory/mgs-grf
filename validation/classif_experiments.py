@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+import time
 
 import numpy as np
 import pandas as pd
@@ -197,11 +198,12 @@ def run_eval(
     splitter,
     # subsample_ratios=[0.2, 0.1, 0.01],
     # subsample_seeds=[11, 9, 5],
+    y_splitter=None,
     to_standard_scale=True,
     categorical_features=None,
-    bool_to_save_data = False,
-    give_scaler=False,
-    to_fit_on_all_and_pred_on_continuous=False
+    bool_to_save_data=False,
+    bool_to_save_runing_time=False,
+    to_fit_on_all_and_pred_on_continuous=False,
 ):
     """
     Main function of the procol.
@@ -229,10 +231,15 @@ def run_eval(
 
     X_copy, y_copy = X.copy(), y.copy()
 
-    folds = list(splitter.split(X_copy, y_copy))
+    if y_splitter is None:  # Case split on y
+        folds = list(splitter.split(X_copy, y_copy))
+    else:
+        folds = list(splitter.split(X_copy, y_splitter))
 
     bool_mask = np.ones((X_copy.shape[1]), dtype=bool)
     bool_mask[categorical_features] = False
+    if bool_to_save_runing_time:
+        list_run_time = []
     ##############################################
     ######## Start protocol by strategy    #######
     ##############################################
@@ -256,55 +263,63 @@ def run_eval(
                     X_train[:, bool_mask] = scaler.fit_transform(
                         X_train[:, bool_mask]
                     )  ## continuous features only
-
-            if give_scaler: # we give the current scaler to the oversampling strategy
-                X_res, y_res = oversampling_func.fit_resample(
-                    X=X_train, y=y_train,scaler=scaler, **oversampling_params
-                )
-            else :
-                X_res, y_res = oversampling_func.fit_resample(
-                    X=X_train, y=y_train, **oversampling_params
-                )
+            if bool_to_save_runing_time and fold == 0:
+                start = time.time()
+            X_res, y_res = oversampling_func.fit_resample(
+                X=X_train, y=y_train, **oversampling_params
+            )
             ######### Run of the given fold ###############
             X_res, y_res = shuffle(
                 X_res, y_res, random_state=0
             )  # to put in oversampling_func. Note necessary
             model.fit(X_res, y_res)
+            if bool_to_save_runing_time and fold == 0:
+                end = time.time()
+                list_run_time.append(end - start)
+
             forest = hasattr(model, "estimators_") and hasattr(
                 model.estimators_[0], "get_depth"
             )
-            if forest: # If the classifier is a forest, the tree depths of the forst are saved
+            if (
+                forest
+            ):  # If the classifier is a forest, the tree depths of the forst are saved
                 curent_tree_depth = [
                     estimator.get_depth() for estimator in model.estimators_
                 ]
                 list_tree_depth.append(curent_tree_depth)
                 list_tree_depth_name.append(oversampling_name)
 
-            if to_standard_scale: ## We chacjk if we need to tranform the test set
-                if categorical_features is None: # Case without categorical features
+            if to_standard_scale:  ## We chacjk if we need to tranform the test set
+                if categorical_features is None:  # Case without categorical features
                     X_test = scaler.transform(X_test)
-                else: # case with categorical features. We only scale the conyinuous ones
+                else:  # case with categorical features. We only scale the conyinuous ones
                     bool_mask = np.ones((X_test.shape[1]), dtype=bool)
                     bool_mask[categorical_features] = False
                     X_test[:, bool_mask] = scaler.transform(
                         X_test[:, bool_mask]
                     )  ## continuous features only
 
-            if to_fit_on_all_and_pred_on_continuous : # In this case, the oversampling strategy takes
+            if (
+                to_fit_on_all_and_pred_on_continuous
+            ):  # In this case, the oversampling strategy takes
                 # all features in input but retruns only the continuous ones.
                 # This means that the fit is done on the continuous one. So our test has to be on the continuous features only.
-                y_pred_probas = model.predict_proba(X_test[:,bool_mask])[:, 1]
+                y_pred_probas = model.predict_proba(X_test[:, bool_mask])[:, 1]
             else:
                 y_pred_probas = model.predict_proba(X_test)[:, 1]
-            
-            if bool_to_save_data : ## We save the oversampled data of each oversampling strategy.
+
+            if (
+                bool_to_save_data
+            ):  ## We save the oversampled data of each oversampling strategy.
                 np.save(
-                    os.path.join(output_dir, "xres"+oversampling_name+name_file), X_res
-                    )
+                    os.path.join(output_dir, "xres" + oversampling_name + name_file),
+                    X_res,
+                )
                 np.save(
-                    os.path.join(output_dir, "yres"+oversampling_name+name_file), y_res
-                    )
-        
+                    os.path.join(output_dir, "yres" + oversampling_name + name_file),
+                    y_res,
+                )
+
             ######## Results are saved ###################
             list_all_preds[i + 1].extend(y_pred_probas)
             if i == 0:
@@ -318,21 +333,24 @@ def run_eval(
         pd.DataFrame(np.array(list_tree_depth).T, columns=list_tree_depth_name).to_csv(
             os.path.join(output_dir, "depth" + name_file[:-4] + ".csv")
         )
+    if bool_to_save_runing_time:
+        pd.DataFrame(
+            np.array(list_run_time).reshape(1, -1),
+            columns=[config[0] for config in list_oversampling_and_params],
+        ).to_csv(os.path.join(output_dir, "runtime" + name_file[:-4] + ".csv"))
+
     runs_path_file_strats = os.path.join(output_dir, "preds_" + name_file)
     np.save(runs_path_file_strats, np.array(list_all_preds).T)
     np.save(
         os.path.join(output_dir, "name_strats" + name_file), list_names_oversamplings
     )
-    if bool_to_save_data: ## Use it with train test split (1 fold)
-        np.save(
-            os.path.join(output_dir, "xtrain" + name_file), X_train
-            )
-        np.save(
-            os.path.join(output_dir, "ytrain" + name_file), y_train
-            )
+    if bool_to_save_data:  ## Use it with train test split (1 fold)
+        np.save(os.path.join(output_dir, "xtrain" + name_file), X_train)
+        np.save(os.path.join(output_dir, "ytrain" + name_file), y_train)
+        np.save(os.path.join(output_dir, "xtest" + name_file), X_test)
 
 
-def compute_metrics(output_dir, name_file, list_metric,n_fold=5):
+def compute_metrics(output_dir, name_file, list_metric, n_fold=5):
     """_summary_
 
     Parameters
@@ -396,7 +414,13 @@ def compute_metrics(output_dir, name_file, list_metric,n_fold=5):
 
 
 def compute_metrics_several_protocols(
-    output_dir, init_name_file, list_metric, std_by_fold=True,bool_roc_auc_only=True, n_iter=100,n_fold=5
+    output_dir,
+    init_name_file,
+    list_metric,
+    std_by_fold=True,
+    bool_roc_auc_only=True,
+    n_iter=100,
+    n_fold=5,
 ):
     """_summary_
 
@@ -427,7 +451,8 @@ def compute_metrics_several_protocols(
             df_metrics_mean, df_metrics_std = compute_metrics(
                 output_dir=output_dir,
                 name_file=name_file,
-                list_metric=[(roc_auc_score, "roc_auc", "proba")],n_fold=n_fold
+                list_metric=[(roc_auc_score, "roc_auc", "proba")],
+                n_fold=n_fold,
             )
             list_res.append(df_metrics_mean.to_numpy())
 
@@ -447,7 +472,10 @@ def compute_metrics_several_protocols(
         for i in range(n_iter):
             name_file = init_name_file + str(i) + ".npy"
             df_metrics_mean, df_metrics_std = compute_metrics(
-                output_dir=output_dir, name_file=name_file, list_metric=list_metric,n_fold=n_fold
+                output_dir=output_dir,
+                name_file=name_file,
+                list_metric=list_metric,
+                n_fold=n_fold,
             )
 
             list_res.append(df_metrics_mean.to_numpy())
@@ -485,9 +513,16 @@ class PaperTimeSeriesSplit(TimeSeriesSplit):
         folds = list(super().split(X))
         folds_from_starting_split = folds[self.starting_split :]
         return folds_from_starting_split
-    
 
-def compute_metrics_cotraining(output_dir_continuous,output_dir_categorical, name_file_continuous,name_file_categorical, list_metric,n_fold=5):
+
+def compute_metrics_cotraining(
+    output_dir_continuous,
+    output_dir_categorical,
+    name_file_continuous,
+    name_file_categorical,
+    list_metric,
+    n_fold=5,
+):
     """_summary_
 
     Parameters
@@ -508,15 +543,27 @@ def compute_metrics_cotraining(output_dir_continuous,output_dir_categorical, nam
     metrics_names = []
     for m in range(n_metric):
         metrics_names.append(list_metric[m][1])
-    oversample_strategies_continuous = np.load(os.path.join(output_dir_continuous, "name_strats" + name_file_continuous))
-    predictions_by_strategy_continuous = np.load(os.path.join(output_dir_continuous, "preds_" + name_file_continuous))
-    df_continuous = pd.DataFrame(predictions_by_strategy_continuous, columns=oversample_strategies_continuous)
-    oversample_strategies_categorical = np.load(os.path.join(output_dir_categorical, "name_strats" + name_file_categorical))
-    predictions_by_strategy_categorical = np.load(os.path.join(output_dir_categorical, "preds_" + name_file_categorical))
-    df_categorical = pd.DataFrame(predictions_by_strategy_categorical, columns=oversample_strategies_categorical)
-    df_all = df_continuous[['y_true','fold']].copy()
-    df_all[['None']] = df_continuous[['None']] * df_categorical[['None']]
-    name_col_strategies = ['None']
+    oversample_strategies_continuous = np.load(
+        os.path.join(output_dir_continuous, "name_strats" + name_file_continuous)
+    )
+    predictions_by_strategy_continuous = np.load(
+        os.path.join(output_dir_continuous, "preds_" + name_file_continuous)
+    )
+    df_continuous = pd.DataFrame(
+        predictions_by_strategy_continuous, columns=oversample_strategies_continuous
+    )
+    oversample_strategies_categorical = np.load(
+        os.path.join(output_dir_categorical, "name_strats" + name_file_categorical)
+    )
+    predictions_by_strategy_categorical = np.load(
+        os.path.join(output_dir_categorical, "preds_" + name_file_categorical)
+    )
+    df_categorical = pd.DataFrame(
+        predictions_by_strategy_categorical, columns=oversample_strategies_categorical
+    )
+    df_all = df_continuous[["y_true", "fold"]].copy()
+    df_all[["None"]] = df_continuous[["None"]] * df_categorical[["None"]]
+    name_col_strategies = ["None"]
 
     array_resultats_metrics = np.zeros((n_metric, len(name_col_strategies)))
     array_resultats_metrics_std = np.zeros((n_metric, len(name_col_strategies)))
@@ -550,8 +597,16 @@ def compute_metrics_cotraining(output_dir_continuous,output_dir_categorical, nam
     )
     return df_mean_metric, df_std_metric
 
+
 def compute_metrics_several_protocols_cotraining(
-    output_dir_continuous,output_dir_categorical, init_name_file_continuous,init_name_file_categorical, list_metric, bool_roc_auc_only=True, n_iter=100,n_fold=5
+    output_dir_continuous,
+    output_dir_categorical,
+    init_name_file_continuous,
+    init_name_file_categorical,
+    list_metric,
+    bool_roc_auc_only=True,
+    n_iter=100,
+    n_fold=5,
 ):
     """_summary_
 
@@ -585,7 +640,8 @@ def compute_metrics_several_protocols_cotraining(
                 output_dir_categorical=output_dir_categorical,
                 name_file_continuous=name_file_continuous,
                 name_file_categorical=name_file_categorical,
-                list_metric=[(roc_auc_score, "roc_auc", "proba")],n_fold=n_fold
+                list_metric=[(roc_auc_score, "roc_auc", "proba")],
+                n_fold=n_fold,
             )
             list_res.append(df_metrics_mean.to_numpy())
 
@@ -610,7 +666,7 @@ def compute_metrics_several_protocols_cotraining(
                 output_dir_categorical=output_dir_categorical,
                 name_file_continuous=name_file_continuous,
                 name_file_categorical=name_file_categorical,
-                list_metric=list_metric
+                list_metric=list_metric,
             )
 
             list_res.append(df_metrics_mean.to_numpy())
@@ -884,44 +940,61 @@ def pr_auc_custom(y_true, y_score):
 
 
 from sklearn.metrics import precision_score
+
+
 def find_precision_at_recall_version3(precision, recall, threshold):
-    #disp = PrecisionRecallDisplay(precision=precision, recall=recall)
-    #disp.plot()
-    #plt.show()
-    roc_df = pd.DataFrame({'precision': precision[:-1], 'recall': recall[:-1], 'threshold':threshold })
-    roc_df.sort_values(by=['recall'],inplace=True)
+    # disp = PrecisionRecallDisplay(precision=precision, recall=recall)
+    # disp.plot()
+    # plt.show()
+    roc_df = pd.DataFrame(
+        {"precision": precision[:-1], "recall": recall[:-1], "threshold": threshold}
+    )
+    roc_df.sort_values(by=["recall"], inplace=True)
     roc_df.reset_index(drop=True, inplace=True)
 
-    indices=roc_df[roc_df['recall'] >= 0.5].index
+    indices = roc_df[roc_df["recall"] >= 0.5].index
     ###index_final=roc_df.iloc[indices].idxmax()[0] # retourne les indices max colonne par colonne
-    ### le [0] c'est pour sélectionner le max selon la precision 
-    index_final=indices[0]
-    #print('res second:', roc_df.iloc[indices[2]].values)
+    ### le [0] c'est pour sélectionner le max selon la precision
+    index_final = indices[0]
+    # print('res second:', roc_df.iloc[indices[2]].values)
     res = roc_df.iloc[index_final].values
-    return res[0],res[1]
+    return res[0], res[1]
 
-def prec_at_recall_version3(y_true,y_score):
-    precision, recall, thresholds = precision_recall_curve(y_true=y_true,y_score=y_score)
-    res_precision, res_recall = find_precision_at_recall_version3(precision=precision, recall=recall, threshold=thresholds)
+
+def prec_at_recall_version3(y_true, y_score):
+    precision, recall, thresholds = precision_recall_curve(
+        y_true=y_true, y_score=y_score
+    )
+    res_precision, res_recall = find_precision_at_recall_version3(
+        precision=precision, recall=recall, threshold=thresholds
+    )
     return res_precision
 
+
 def find_precision_at_recall_version3_02(precision, recall, threshold):
-    #disp = PrecisionRecallDisplay(precision=precision, recall=recall)
-    #disp.plot()
-    #plt.show()
-    roc_df = pd.DataFrame({'precision': precision[:-1], 'recall': recall[:-1], 'threshold':threshold })
-    roc_df.sort_values(by=['recall'],inplace=True)
+    # disp = PrecisionRecallDisplay(precision=precision, recall=recall)
+    # disp.plot()
+    # plt.show()
+    roc_df = pd.DataFrame(
+        {"precision": precision[:-1], "recall": recall[:-1], "threshold": threshold}
+    )
+    roc_df.sort_values(by=["recall"], inplace=True)
     roc_df.reset_index(drop=True, inplace=True)
 
-    indices=roc_df[roc_df['recall'] >= 0.2].index
+    indices = roc_df[roc_df["recall"] >= 0.2].index
     ###index_final=roc_df.iloc[indices].idxmax()[0] # retourne les indices max colonne par colonne
-    ### le [0] c'est pour sélectionner le max selon la precision 
-    index_final=indices[0]
-    #print('res second:', roc_df.iloc[indices[2]].values)
+    ### le [0] c'est pour sélectionner le max selon la precision
+    index_final = indices[0]
+    # print('res second:', roc_df.iloc[indices[2]].values)
     res = roc_df.iloc[index_final].values
-    return res[0],res[1]
+    return res[0], res[1]
 
-def prec_at_recall_version3_02(y_true,y_score):
-    precision, recall, thresholds = precision_recall_curve(y_true=y_true,y_score=y_score)
-    res_precision, res_recall = find_precision_at_recall_version3_02(precision=precision, recall=recall, threshold=thresholds)
+
+def prec_at_recall_version3_02(y_true, y_score):
+    precision, recall, thresholds = precision_recall_curve(
+        y_true=y_true, y_score=y_score
+    )
+    res_precision, res_recall = find_precision_at_recall_version3_02(
+        precision=precision, recall=recall, threshold=thresholds
+    )
     return res_precision
