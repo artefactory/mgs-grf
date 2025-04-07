@@ -415,9 +415,9 @@ class WMGS_NC_cov(BaseOverSampler):
         return oversampled_X, oversampled_y
 
 
-class MultiOutPutClassifier_and_MGS(BaseOverSampler):
+class MGSGRFOverSampler(BaseOverSampler):
     """
-    MultiOutPutClassifier and MGS
+    MGS-GRF oversampling strategy.
     """
 
     def __init__(
@@ -977,5 +977,5 @@ class SMOTENC2(SMOTENC):
             ys = start_idx + col_sels
             X_new[:, start_idx:end_idx] = 0
             X_new[xs, ys] = 1
-
         return X_new
+
