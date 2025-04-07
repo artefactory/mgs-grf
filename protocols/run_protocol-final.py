@@ -1,5 +1,6 @@
 import os
 import sys
+
 sys.path.insert(1, os.path.abspath(os.path.join(os.getcwd(), os.pardir)))
 from pathlib import Path
 
@@ -18,8 +19,13 @@ from protocols.baselines import (
 )
 from mgs_grf.over_sampling import MGSGRFOverSampler
 from mgs_grf.forest_for_categorical import DrfSk, KNNTies
-from validation.classif_experiments import run_eval, read_subsampling_indices, subsample_to_ratio_indices
+from validation.classif_experiments import (
+    run_eval,
+    read_subsampling_indices,
+    subsample_to_ratio_indices,
+)
 from data.data import load_BankChurners_data
+
 
 def to_str(x):
     return x.astype(str)
@@ -28,23 +34,24 @@ def to_str(x):
 def to_float(x):
     return x.astype(float)
 
-################# INitialisation #################
-#initial_X, initial_y = load_BankMarketing_data()
-#numeric_features = [0, 5, 11, 12, 13, 14]
-#categorical_features = [1, 2, 3, 4, 6, 7, 8, 9, 10, 15]
 
-initial_X,initial_y = load_BankChurners_data()
-numeric_features = [0,2,7,8,9,10,11,12,13,14,15,16,17,18]
-categorical_features = [1,3,4,5,6]
+################# INitialisation #################
+# initial_X, initial_y = load_BankMarketing_data()
+# numeric_features = [0, 5, 11, 12, 13, 14]
+# categorical_features = [1, 2, 3, 4, 6, 7, 8, 9, 10, 15]
+
+initial_X, initial_y = load_BankChurners_data()
+numeric_features = [0, 2, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+categorical_features = [1, 3, 4, 5, 6]
 ##################################
 K_MGS = max(len(numeric_features) + 1, 5)
 llambda_MGS = 1.0
 print("Value K_MGS : ", K_MGS)
 print("llambda_MGS  : ", llambda_MGS)
 
-clf = lgb.LGBMClassifier(n_estimators=100,verbosity=-1, n_jobs=8, random_state=0)
+clf = lgb.LGBMClassifier(n_estimators=100, verbosity=-1, n_jobs=8, random_state=0)
 balanced_clf = lgb.LGBMClassifier(
-    n_estimators=100,class_weight="balanced", verbosity=-1, n_jobs=8, random_state=0
+    n_estimators=100, class_weight="balanced", verbosity=-1, n_jobs=8, random_state=0
 )
 n_iter = 20
 # output_dir_path =  "../saved_experiments_categorial_features/BankMarketing"
@@ -52,9 +59,14 @@ n_iter = 20
 #    output_dir_subsampling=output_dir_path,
 #    name_subsampling_file='bankmarketing_sub_original_to_1')
 output_dir_path = "../saved_experiments_categorial_features/BankChurners"
-indices_kept_1 = subsample_to_ratio_indices(X=initial_X,y=initial_y,ratio=0.01,seed_sub=5,
-                                            output_dir_subsampling=output_dir_path,
-                                            name_subsampling_file='BankChurners_sub_original_to_1')
+indices_kept_1 = subsample_to_ratio_indices(
+    X=initial_X,
+    y=initial_y,
+    ratio=0.01,
+    seed_sub=5,
+    output_dir_subsampling=output_dir_path,
+    name_subsampling_file="BankChurners_sub_original_to_1",
+)
 
 if True:
     X, y = read_subsampling_indices(
@@ -67,7 +79,9 @@ if True:
 else:
     X, y = initial_X, initial_y
 
-output_dir_path = "../saved_experiments_categorial_features/BankChurners/2025/subsample_to_1"
+output_dir_path = (
+    "../saved_experiments_categorial_features/BankChurners/2025/subsample_to_1"
+)
 Path(output_dir_path).mkdir(parents=True, exist_ok=True)
 init_name_file_original = "2024-11-30-lgbm_"
 ###############################################################

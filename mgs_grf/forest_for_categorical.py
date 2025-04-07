@@ -32,6 +32,7 @@ class DrfFitPredictMixin:
     Mixin for the Genralized Random Forest Procedure.
     The predict draw a sample based on the frequency of training samples ending in the same leaf as the new sample.
     """
+
     def fit(self, X, y, sample_weight=None):
         super().fit(X=X, y=y, sample_weight=sample_weight)
         self.train_y = y
@@ -219,4 +220,3 @@ class KNNTies(KNeighborsClassifier):
             y_pred = y_pred.ravel()
 
         return y_pred
-

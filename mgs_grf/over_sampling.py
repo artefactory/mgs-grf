@@ -9,6 +9,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.covariance import ledoit_wolf, oas, empirical_covariance
 from imblearn.utils import check_target_type
 
+
 class MGSGRFOverSampler(BaseOverSampler):
     """
     MGS-GRF oversampling strategy.
@@ -175,9 +176,7 @@ class MGSGRFOverSampler(BaseOverSampler):
                     for i in range(len(eigen_values))
                 ]
             elif self.kind_sampling == "cholesky":
-                As = np.linalg.cholesky(
-                    covs + 1e-8 * np.identity(dimension_continuous)
-                )
+                As = np.linalg.cholesky(covs + 1e-8 * np.identity(dimension_continuous))
             else:
                 raise ValueError(
                     "kind_sampling of MGS not supported"
@@ -461,5 +460,3 @@ class MGSGRFOverSampler(BaseOverSampler):
                 return oversampled_X, oversampled_y, self.Classifier
         else:
             return oversampled_X, oversampled_y
-
-
