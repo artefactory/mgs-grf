@@ -1,4 +1,3 @@
-## Paper name.
 <div align="center">
 
 # Harnessing Mixed Features for Imbalance Data Oversampling: Application to Bank Customers Scoring
@@ -18,16 +17,22 @@ Preprint. <br>
 
 You will find code to reproduce the paper experiments as well as an nice implementation of our *new* and *efficient* strategy for your projects.
 ## ⭐ Table of Contents
-  - [Getting Started](#getting-started)
-  - [Data sets](#data-sets)
-  - [Acknowledgements](#acknowledgements)
+  - [How to use MGS-GRF](#-how-to-use-the-mgs-grf-algorithm-to-learn-on-imbalanced-data)
+  - [Reproducing the paper experiments](#-reproducing-the-paper-experiments)
+  - [Data sets](#-data-sets)
+  - [Acknowledgements](#-acknowledgements)
+  - [Citation](#-citation)
 
-## ⭐ Getting Started
+## ⭐ How to use the MGS-GRF Algorithm to learn on imbalanced data
+
+
+
+## ⭐ Reproducing the paper experiments
 
 If you want to reproduce our paper experiments:
-  - Section 4.2 : the [pyhton file](protocols/run_synthetic_coherence.py) reproduce the experiments (data sets, oversampling and traing). Then the results can be analyzed [here](protocols/notebooks/res_coh.ipynb).
-  - Section 4.3 : the   [pyhton file](protocols/run_synthetic_association.py) reproduce the experiments (data sets, oversampling and traing). Then the results can be analyzed [here](protocols/notebooks/res_asso.ipynb).
-  - Section 5 : the [pyhton file](protocols/run_protocol-final.py) reproduce the experiments (data sets, oversampling and traing). Then the results can be analyzed [here](protocols/notebooks/res_real_data.ipynb).
+  - Section 4.2 : the [Python file](protocols/run_synthetic_coherence.py) reproduce the experiments (data sets, oversampling and traing). Then the results can be analyzed with this [notebook](protocols/notebooks/res_coh.ipynb).
+  - Section 4.3 : the   [Python file](protocols/run_synthetic_association.py) reproduce the experiments (data sets, oversampling and traing). Then the results can be analyzed with this [notebook](protocols/notebooks/res_asso.ipynb).
+  - Section 5 : the [Python file](protocols/run_protocol-final.py) reproduce the experiments (data sets, oversampling and traing). Then the results can be analyzed with this [notebook](protocols/notebooks/res_real_data.ipynb).
 
 ## ⭐ Data sets
 
@@ -41,8 +46,19 @@ The data sets of used for our article should be dowloaded  inside the *data/exte
 
 This work was done through a partenership between **Artefact Research Center** and the **Laboratoire de Probabilités Statistiques et Modélisation** (LPSM) of Sorbonne University.
 
-[![Artefact](data/logos/logo_arc.png)](https://www.artefact.com/data-consulting-transformation/artefact-research-center/)  |  [![LPSM]( data/logos//logo_LPSM.jpg)](https://www.lpsm.paris/)
-:-------------------------:|:-------------------------:
+<p align="center">
+  <a href="https://www.artefact.com/data-consulting-transformation/artefact-research-center/">
+    <img src="https://raw.githubusercontent.com/artefactory/choice-learn/main/docs/illustrations/logos/logo_arc.png" height="80" />
+  </a>
+  &emsp;
+  &emsp;
+  <a href="https://www.lpsm.paris/">
+    <img src="data/logos//logo_LPSM.jpg" height="95" />
+  </a>
+</p>
+
+
+## ⭐ Citation
 
 If you find the code usefull, please consider citing us :
 ```

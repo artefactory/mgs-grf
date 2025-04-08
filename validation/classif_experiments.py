@@ -1,18 +1,15 @@
 import os
-from pathlib import Path
 import time
+from pathlib import Path
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from sklearn.model_selection import TimeSeriesSplit
-from sklearn.utils import shuffle
-from sklearn.metrics import auc
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import roc_auc_score
-
-from sklearn.metrics import roc_curve, precision_recall_curve
 from scipy import interpolate
+from sklearn.metrics import auc, precision_recall_curve, roc_auc_score, roc_curve
+from sklearn.model_selection import TimeSeriesSplit
+from sklearn.preprocessing import StandardScaler
+from sklearn.utils import shuffle
 
 
 def proba_to_label(y_pred_probas, treshold=0.5):  # apply_threshold ?
@@ -87,16 +84,12 @@ def subsample_to_ratio_indices(
     df_X = pd.DataFrame(data=X)
     if previous_under_sampling is not None:
         indices_positifs_kept = np.random.choice(
-            df_X.loc[previous_under_sampling]
-            .loc[np.array(y_under, dtype=bool)]
-            .index.values,
+            df_X.loc[previous_under_sampling].loc[np.array(y_under, dtype=bool)].index.values,
             size=n_undersampling_sub,
             replace=False,
         )
         indices_negatifs_kept = (
-            df_X.loc[previous_under_sampling]
-            .loc[np.array(1 - y_under, dtype=bool), :]
-            .index.values
+            df_X.loc[previous_under_sampling].loc[np.array(1 - y_under, dtype=bool), :].index.values
         )
         indices_kept = np.hstack((indices_positifs_kept, indices_negatifs_kept))
     else:
@@ -106,9 +99,7 @@ def subsample_to_ratio_indices(
             replace=False,
         )
         indices_negatifs_kept = df_X.loc[np.array(1 - y, dtype=bool)].index.to_numpy()
-        indices_kept = np.hstack(
-            (indices_positifs_kept, indices_negatifs_kept)
-        )  # kept_indexes
+        indices_kept = np.hstack((indices_positifs_kept, indices_negatifs_kept))  # kept_indexes
 
     # set a default location + name for cache ?
     np.save(
@@ -118,9 +109,7 @@ def subsample_to_ratio_indices(
     return indices_kept
 
 
-def read_subsampling_indices(
-    X, y, dir_subsampling, name_subsampling_file, get_indexes=False
-):
+def read_subsampling_indices(X, y, dir_subsampling, name_subsampling_file, get_indexes=False):
     """_summary_
 
     Parameters
@@ -141,9 +130,7 @@ def read_subsampling_indices(
     _type_
         _description_
     """
-    indexes_subsampling = np.load(
-        os.path.join(dir_subsampling, name_subsampling_file + ".npy")
-    )
+    indexes_subsampling = np.load(os.path.join(dir_subsampling, name_subsampling_file + ".npy"))
     if get_indexes:
         return indexes_subsampling, X[indexes_subsampling, :], y[indexes_subsampling]
     else:
@@ -220,9 +207,7 @@ def run_eval(
 
     ################## INITIALISATION #################
     n_strategy = len(list_oversampling_and_params)
-    list_names_oversamplings = ["y_true"] + [
-        config[0] for config in list_oversampling_and_params
-    ]
+    list_names_oversamplings = ["y_true"] + [config[0] for config in list_oversampling_and_params]
     list_names_oversamplings.append("fold")
 
     list_all_preds = [[] for i in range(n_strategy + 2)]
@@ -277,15 +262,9 @@ def run_eval(
                 end = time.time()
                 list_run_time.append(end - start)
 
-            forest = hasattr(model, "estimators_") and hasattr(
-                model.estimators_[0], "get_depth"
-            )
-            if (
-                forest
-            ):  # If the classifier is a forest, the tree depths of the forst are saved
-                curent_tree_depth = [
-                    estimator.get_depth() for estimator in model.estimators_
-                ]
+            forest = hasattr(model, "estimators_") and hasattr(model.estimators_[0], "get_depth")
+            if forest:  # If the classifier is a forest, the tree depths of the forst are saved
+                curent_tree_depth = [estimator.get_depth() for estimator in model.estimators_]
                 list_tree_depth.append(curent_tree_depth)
                 list_tree_depth_name.append(oversampling_name)
 
@@ -308,9 +287,7 @@ def run_eval(
             else:
                 y_pred_probas = model.predict_proba(X_test)[:, 1]
 
-            if (
-                bool_to_save_data
-            ):  ## We save the oversampled data of each oversampling strategy.
+            if bool_to_save_data:  ## We save the oversampled data of each oversampling strategy.
                 np.save(
                     os.path.join(output_dir, "xres" + oversampling_name + name_file),
                     X_res,
@@ -326,9 +303,7 @@ def run_eval(
                 list_all_preds[-1].extend(
                     np.full((len(test),), fold)
                 )  # save information of the ciurrent testing fold
-                list_all_preds[0].extend(
-                    y_copy[test]
-                )  # save the information of the target value
+                list_all_preds[0].extend(y_copy[test])  # save the information of the target value
     if len(list_tree_depth) != 0:
         pd.DataFrame(np.array(list_tree_depth).T, columns=list_tree_depth_name).to_csv(
             os.path.join(output_dir, "depth" + name_file[:-4] + ".csv")
@@ -341,9 +316,7 @@ def run_eval(
 
     runs_path_file_strats = os.path.join(output_dir, "preds_" + name_file)
     np.save(runs_path_file_strats, np.array(list_all_preds).T)
-    np.save(
-        os.path.join(output_dir, "name_strats" + name_file), list_names_oversamplings
-    )
+    np.save(os.path.join(output_dir, "name_strats" + name_file), list_names_oversamplings)
     if bool_to_save_data:  ## Use it with train test split (1 fold)
         np.save(os.path.join(output_dir, "xtrain" + name_file), X_train)
         np.save(os.path.join(output_dir, "ytrain" + name_file), y_train)
@@ -395,9 +368,7 @@ def compute_metrics(output_dir, name_file, list_metric, n_fold=5):
                 if list_metric[k][2] == "pred":
                     value_metric = list_metric[k][0](y_true=y_true, y_pred=y_pred)
                 else:
-                    value_metric = list_metric[k][0](
-                        y_true=y_true, y_score=pred_probas_all
-                    )
+                    value_metric = list_metric[k][0](y_true=y_true, y_score=pred_probas_all)
                 list_value.append(value_metric)
             array_resultats_metrics[k, col_number] = np.mean(list_value)
             array_resultats_metrics_std[k, col_number] = np.std(list_value)
@@ -458,12 +429,8 @@ def compute_metrics_several_protocols(
 
         name_cols = df_metrics_mean.columns
         array_res = np.array(list_res)
-        df_final_mean = pd.DataFrame(
-            np.mean(array_res, axis=0).reshape((1, -1)), columns=name_cols
-        )
-        df_final_std = pd.DataFrame(
-            np.std(array_res, axis=0).reshape((1, -1)), columns=name_cols
-        )
+        df_final_mean = pd.DataFrame(np.mean(array_res, axis=0).reshape((1, -1)), columns=name_cols)
+        df_final_std = pd.DataFrame(np.std(array_res, axis=0).reshape((1, -1)), columns=name_cols)
         df_final_mean.index = ["ROC AUC"]
         df_final_std.index = ["ROC AUC"]
 
@@ -496,9 +463,7 @@ class PaperTimeSeriesSplit(TimeSeriesSplit):
     The starting split can be chosen with this child class from TimeSeriesSplit.
     """
 
-    def __init__(
-        self, n_splits=10, starting_split=5, max_train_size=None, test_size=None, gap=0
-    ):
+    def __init__(self, n_splits=10, starting_split=5, max_train_size=None, test_size=None, gap=0):
         """ """
         super().__init__(
             n_splits=n_splits,
@@ -580,9 +545,7 @@ def compute_metrics_cotraining(
                 if list_metric[k][2] == "pred":
                     value_metric = list_metric[k][0](y_true=y_true, y_pred=y_pred)
                 else:
-                    value_metric = list_metric[k][0](
-                        y_true=y_true, y_score=pred_probas_all
-                    )
+                    value_metric = list_metric[k][0](y_true=y_true, y_score=pred_probas_all)
                 list_value.append(value_metric)
             array_resultats_metrics[k, col_number] = np.mean(list_value)
             array_resultats_metrics_std[k, col_number] = np.std(list_value)
@@ -647,12 +610,8 @@ def compute_metrics_several_protocols_cotraining(
 
         name_cols = df_metrics_mean.columns
         array_res = np.array(list_res)
-        df_final_mean = pd.DataFrame(
-            np.mean(array_res, axis=0).reshape((1, -1)), columns=name_cols
-        )
-        df_final_std = pd.DataFrame(
-            np.std(array_res, axis=0).reshape((1, -1)), columns=name_cols
-        )
+        df_final_mean = pd.DataFrame(np.mean(array_res, axis=0).reshape((1, -1)), columns=name_cols)
+        df_final_std = pd.DataFrame(np.std(array_res, axis=0).reshape((1, -1)), columns=name_cols)
         df_final_mean.index = ["ROC AUC"]
         df_final_std.index = ["ROC AUC"]
 
@@ -772,34 +731,22 @@ def plot_curves(
     """
     filename_0 = start_filename + str(0) + ".npy"
     if stategies_to_show is None:
-        stategies_to_show = np.load(
-            os.path.join(output_dir, "name_strats" + filename_0)
-        ).tolist()
+        stategies_to_show = np.load(os.path.join(output_dir, "name_strats" + filename_0)).tolist()
         stategies_to_show.remove("fold")  # remove fold column which is not a strategy
-        stategies_to_show.remove(
-            "y_true"
-        )  # remove y_true column which is not a strategy
+        stategies_to_show.remove("y_true")  # remove y_true column which is not a strategy
     if names_stategies_to_show is None:
         names_stategies_to_show = stategies_to_show
 
-    list_names_oversamplings = np.load(
-        os.path.join(output_dir, "name_strats" + filename_0)
-    )
+    list_names_oversamplings = np.load(os.path.join(output_dir, "name_strats" + filename_0))
 
     list_fpr = np.arange(start=0, stop=1.01, step=0.01)
     list_recall = np.arange(start=0, stop=1.01, step=0.01)
-    array_interpolated_quantity = np.zeros(
-        (n_iter, len(list_recall), len(stategies_to_show))
-    )
+    array_interpolated_quantity = np.zeros((n_iter, len(list_recall), len(stategies_to_show)))
     array_quantity_auc = np.zeros((n_iter, len(stategies_to_show)))
     for i in range(n_iter):
         filename = start_filename + str(i) + ".npy"
-        array_all_preds_strats_final = np.load(
-            os.path.join(output_dir, "preds_" + filename)
-        )
-        df_all = pd.DataFrame(
-            array_all_preds_strats_final, columns=list_names_oversamplings
-        )
+        array_all_preds_strats_final = np.load(os.path.join(output_dir, "preds_" + filename))
+        df_all = pd.DataFrame(array_all_preds_strats_final, columns=list_names_oversamplings)
 
         for j, col in enumerate(stategies_to_show):
             array_interpolated_quantity_folds = np.zeros((5, len(list_recall)))
@@ -817,22 +764,18 @@ def plot_curves(
                     )
                     prec_interpolated = interpolation_func(list_recall)
                     # array_interpolated_quantity_folds[fold,:] = prec_interpolated
-                    array_interpolated_quantity_folds[fold, :] = np.flip(
-                        prec_interpolated
-                    )
+                    array_interpolated_quantity_folds[fold, :] = np.flip(prec_interpolated)
                     list_auc_folds.append(pr_auc)
                 else:  ## ROC Curves case
                     fpr, tpr, _ = roc_curve(y_true, pred_probas_col)
-                    interpolation_func = interpolate.interp1d(
-                        fpr, tpr, kind=kind_interpolation
-                    )
+                    interpolation_func = interpolate.interp1d(fpr, tpr, kind=kind_interpolation)
                     tpr_interpolated = interpolation_func(list_fpr)
                     array_interpolated_quantity_folds[fold, :] = tpr_interpolated
                     roc_auc = roc_auc_score(y_true, pred_probas_col)
                     list_auc_folds.append(roc_auc)
 
-            array_interpolated_quantity[i, :, j] = (
-                array_interpolated_quantity_folds.mean(axis=0)
+            array_interpolated_quantity[i, :, j] = array_interpolated_quantity_folds.mean(
+                axis=0
             )  ## the mean interpolated over the 5 fold are averaged
             array_quantity_auc[i, j] = np.mean(list_auc_folds)
     mean_final_prec = array_interpolated_quantity.mean(
@@ -962,9 +905,7 @@ def find_precision_at_recall_version3(precision, recall, threshold):
 
 
 def prec_at_recall_version3(y_true, y_score):
-    precision, recall, thresholds = precision_recall_curve(
-        y_true=y_true, y_score=y_score
-    )
+    precision, recall, thresholds = precision_recall_curve(y_true=y_true, y_score=y_score)
     res_precision, res_recall = find_precision_at_recall_version3(
         precision=precision, recall=recall, threshold=thresholds
     )
@@ -991,9 +932,7 @@ def find_precision_at_recall_version3_02(precision, recall, threshold):
 
 
 def prec_at_recall_version3_02(y_true, y_score):
-    precision, recall, thresholds = precision_recall_curve(
-        y_true=y_true, y_score=y_score
-    )
+    precision, recall, thresholds = precision_recall_curve(y_true=y_true, y_score=y_score)
     res_precision, res_recall = find_precision_at_recall_version3_02(
         precision=precision, recall=recall, threshold=thresholds
     )

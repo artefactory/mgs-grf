@@ -1,17 +1,15 @@
 import os
-
-import pandas as pd
-import numpy as np
 from collections import Counter
+
+import numpy as np
+import pandas as pd
 from scipy.io.arff import loadarff
 
-DATA_DIR = os.path.join(
-    os.path.abspath(os.path.join(os.getcwd(), os.pardir)), "data", "externals"
-)
+DATA_DIR = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir)), "data", "externals")
 
 
 def load_abalone_data():
-    """
+    r"""
     Loads Abalone data set from data\dexternals folder.
     The name of the file shoulde be : abalone.data
     """
@@ -77,7 +75,7 @@ def load_abalone_data():
 
 
 def load_pima_data():
-    """
+    r"""
     Load PIMA diabates data set from data\dexternals folder
     The name of the file shoulde be : diabetes.csv
     """
@@ -96,7 +94,7 @@ def load_pima_data():
 
 
 def load_phoneme_data():
-    """
+    r"""
     Load Phoneme diabates data set from data\dexternals folder
     The name of the file shoulde be : phoneme.csv
     """
@@ -118,7 +116,7 @@ def load_phoneme_data():
 
 
 def load_df_phoneme_positifs():
-    """
+    r"""
     Load Phoneme data set from data\dexternals folder and then keep only keep the minority (positive) samples
     The name of the file shoulde be : phoneme.csv
     """
@@ -131,9 +129,7 @@ def load_df_phoneme_positifs():
         ),
         names=["Aa", " Ao", " Dcl", " Iy", " Sh", " Class"],
     )
-    df_phoneme_positifs = (
-        df_phoneme[df_phoneme[" Class"] == 1].copy().reset_index(drop=True)
-    )
+    df_phoneme_positifs = df_phoneme[df_phoneme[" Class"] == 1].copy().reset_index(drop=True)
     df_phoneme_positifs.drop(
         [" Class"], axis=1, inplace=True
     )  # personnally I prefer not to use inplace
@@ -141,7 +137,7 @@ def load_df_phoneme_positifs():
 
 
 def load_yeast_data():
-    """
+    r"""
     Load Yeast data set from data\dexternals folder
     The name of the file shoulde be : yeast.data
     """
@@ -190,7 +186,7 @@ def load_yeast_data():
 
 
 def load_haberman_data():
-    """
+    r"""
     Load Haberman data set from data\dexternals folder
     The name of the file shoulde be : haberman.data
     """
@@ -212,7 +208,7 @@ def load_haberman_data():
 
 
 def load_magictel_data():
-    """
+    r"""
     Load haberman data set from data\dexternals folder
     The name of the file shoulde be : magictel.arff
     """
@@ -233,7 +229,7 @@ def load_magictel_data():
 
 
 def load_california_data():
-    """
+    r"""
     Load California data set from data\dexternals folder
     The name of the file shoulde be : california.arff
     """
@@ -254,7 +250,7 @@ def load_california_data():
 
 
 def load_house_data():
-    """
+    r"""
     Load House_16h data set from data\dexternals folder
     The name of the file shoulde be : house_16H.arff
     """
@@ -275,7 +271,7 @@ def load_house_data():
 
 
 def load_vehicle_data():
-    """
+    r"""
     Load vehicle data set from data\dexternals folder
     All the file dowloaded/unziped from UCI should be in a folder named vehicle vehicle
     """
@@ -414,9 +410,7 @@ def load_vehicle_data():
         axis=0,
     )
     df_vehicle.columns = names_vehicle
-    df_vehicle.replace(
-        {"Class": {"van": 1, "saab": 0, "bus": 0, "opel": 0}}, inplace=True
-    )
+    df_vehicle.replace({"Class": {"van": 1, "saab": 0, "bus": 0, "opel": 0}}, inplace=True)
     X_vehicle = df_vehicle.drop(["Class"], axis=1).to_numpy()
     y_vehicle = df_vehicle[["Class"]].to_numpy().ravel()
 
@@ -424,7 +418,7 @@ def load_vehicle_data():
 
 
 def load_breastcancer_data():
-    """
+    r"""
     Load Breast cancer wisconsin data set from data\dexternals folder
     The name of the file shoulde be : breast-cancer-wisconsin.data
     """
@@ -459,9 +453,7 @@ def load_breastcancer_data():
     df_b_cancer_w.replace({"Class": {2: 0, 4: 1}}, inplace=True)
     df_b_cancer_w = df_b_cancer_w[df_b_cancer_w.Bare_nuclei != "?"]
     df_b_cancer_w = df_b_cancer_w.astype({"Bare_nuclei": "int64"})
-    df_b_cancer_w.drop_duplicates(
-        subset=["Sample_code_number"], keep="first", inplace=True
-    )
+    df_b_cancer_w.drop_duplicates(subset=["Sample_code_number"], keep="first", inplace=True)
     X_b_cancer_w = df_b_cancer_w.drop(["Class"], axis=1).to_numpy()
     y_b_cancer_w = df_b_cancer_w[["Class"]].to_numpy().ravel()
 
@@ -469,7 +461,7 @@ def load_breastcancer_data():
 
 
 def load_ionosphere_data():
-    """
+    r"""
     Load ionosphere data set from data\dexternals folder
     The name of the file shoulde be : ionosphere.data
     """
@@ -491,7 +483,7 @@ def load_ionosphere_data():
 
 
 def load_credit_data():
-    """
+    r"""
     Load Creditcard data set from data\dexternals folder
     The name of the file shoulde be : creditcard.csv
     """
@@ -552,7 +544,7 @@ def load_BankMarketing_data():
 
 
 def load_BankChurners_data():
-    """
+    r"""
     Load BankChurners data set from data\dexternals folder
     The name of the file shoulde be : BankChurners.csv
     """
@@ -594,7 +586,7 @@ def load_defaultUCI_data():
 
 
 def load_TelcoChurn_data():
-    """
+    r"""
     Load TelcoChurn data set from data\dexternals folder
     The name of the file shoulde be : Telco-Customer-Churn.csv
     """
@@ -610,12 +602,7 @@ def load_TelcoChurn_data():
     df_telco_churn[["TotalCharges"]] = df_telco_churn[["TotalCharges"]].astype(float)
 
     X_telco = df_telco_churn.drop(["customerID", "Churn"], axis=1).to_numpy()
-    y_telco = (
-        df_telco_churn[["Churn"]]
-        .replace({"Churn": {"No": 0, "Yes": 1}})
-        .to_numpy()
-        .ravel()
-    )
+    y_telco = df_telco_churn[["Churn"]].replace({"Churn": {"No": 0, "Yes": 1}}).to_numpy().ravel()
 
     return X_telco, y_telco
 
@@ -631,16 +618,14 @@ def load_census_data():
     y = census_income.data.targets
 
     X.fillna("unknow", inplace=True)  # fillna
-    y.replace(
-        {"income": {">50K": 1, ">50K.": 1, "<=50K": 0, "<=50K.": 0}}, inplace=True
-    )
+    y.replace({"income": {">50K": 1, ">50K.": 1, "<=50K": 0, "<=50K.": 0}}, inplace=True)
     X = X.to_numpy()
     y = y.to_numpy().ravel()
     return X, y
 
 
 def load_feedzai_data():
-    """
+    r"""
     Load Base data set from data\dexternals folder
     The name of the file shoulde be : Base.csv
     """
@@ -738,9 +723,7 @@ def load_covertype_data(
         "Soil_Type39",
         "Soil_Type40",
     ]
-    series_soil = original_X[columns_soil].apply(
-        decode_one_hot, columns=columns_soil, axis=1
-    )
+    series_soil = original_X[columns_soil].apply(decode_one_hot, columns=columns_soil, axis=1)
     X[["Soil_Type"]] = series_soil.to_frame()
 
     columns_wilderness = [

@@ -4,27 +4,26 @@ import sys
 sys.path.insert(1, os.path.abspath(os.path.join(os.getcwd(), os.pardir)))
 from pathlib import Path
 
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.preprocessing import FunctionTransformer
+import lightgbm as lgb
+from imblearn.over_sampling import SMOTENC, RandomOverSampler
+from imblearn.under_sampling import RandomUnderSampler
 from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import StratifiedKFold
-from imblearn.under_sampling import RandomUnderSampler
-from imblearn.over_sampling import RandomOverSampler, SMOTENC
-import lightgbm as lgb
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import FunctionTransformer, OneHotEncoder
 
+from data.data import load_BankChurners_data
+from mgs_grf.forest_for_categorical import DrfSk, KNNTies
+from mgs_grf.over_sampling import MGSGRFOverSampler
 from protocols.baselines import (
     NoSampling,
     WMGS_NC_cov,
 )
-from mgs_grf.over_sampling import MGSGRFOverSampler
-from mgs_grf.forest_for_categorical import DrfSk, KNNTies
 from validation.classif_experiments import (
-    run_eval,
     read_subsampling_indices,
+    run_eval,
     subsample_to_ratio_indices,
 )
-from data.data import load_BankChurners_data
 
 
 def to_str(x):
@@ -79,9 +78,7 @@ if True:
 else:
     X, y = initial_X, initial_y
 
-output_dir_path = (
-    "../saved_experiments_categorial_features/BankChurners/2025/subsample_to_1"
-)
+output_dir_path = "../saved_experiments_categorial_features/BankChurners/2025/subsample_to_1"
 Path(output_dir_path).mkdir(parents=True, exist_ok=True)
 init_name_file_original = "2024-11-30-lgbm_"
 ###############################################################
@@ -119,17 +116,13 @@ for i in range(n_iter):
         ),
         (
             "RUS",
-            RandomUnderSampler(
-                sampling_strategy="majority", replacement=False, random_state=i
-            ),
+            RandomUnderSampler(sampling_strategy="majority", replacement=False, random_state=i),
             {},
             model,
         ),
         (
             "SmoteNC (K=5)",
-            SMOTENC(
-                k_neighbors=5, categorical_features=categorical_features, random_state=i
-            ),
+            SMOTENC(k_neighbors=5, categorical_features=categorical_features, random_state=i),
             {},
             model,
         ),
@@ -200,9 +193,7 @@ for i in range(n_iter):
         ),
     ]
 
-    splitter_stratified = StratifiedKFold(
-        n_splits=5, shuffle=True, random_state=100 + i
-    )
+    splitter_stratified = StratifiedKFold(n_splits=5, shuffle=True, random_state=100 + i)
     name_file = init_name_file_original + str(i) + ".npy"
     run_eval(
         output_dir=output_dir_path,

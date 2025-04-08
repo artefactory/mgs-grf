@@ -1,0 +1,49 @@
+[project]
+requires-python = ">=3.9"
+
+[tool.ruff]
+select = [
+  "E",
+  "W",
+  "F",
+  "I",
+  "N",
+  "D",
+  "ANN",
+  "Q",
+  "RET",
+  "ARG",
+  "PTH",
+  "PD",
+] # See: https://beta.ruff.rs/docs/rules/
+ignore = ["D203", "D213", "ANN101", "ANN102", "ANN204", "ANN001", "ANN002", "ANN202", "ANN201", "ANN206", "ANN003", "N802", "N803", "N806", "PTH100", "PTH110", "PTH118", "PTH123","PTH113", "PTH104"]
+line-length = 100
+exclude = [
+  ".bzr",
+  ".direnv",
+  ".eggs",
+  ".git",
+  ".ruff_cache",
+  ".svn",
+  ".tox",
+  ".venv",
+  "__pypackages__",
+  "_build",
+  "buck-out",
+  "build",
+  "dist",
+  "node_modules",
+  "venv",
+]
+
+[tool.ruff.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.ruff.isort]
+known-first-party = ["choice_learn", "config", "tests"]
+
+[tool.bandit.assert_used]
+exclude_dirs = ["tests/"]
