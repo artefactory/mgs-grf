@@ -114,7 +114,14 @@ class MGS(BaseOverSampler):
 
     def __init__(self, K, n_points=None, llambda=1.0, sampling_strategy="auto", random_state=None):
         """
-        llambda is a float.
+        Parameters
+        ----------
+        K : int
+            The number of nearest neighbors considered for the parameters estimation of the gaussians
+        sampling_strategy: string or float
+            The sampling strategy, i.e the desired imbalance ratio after resampling.
+        llambda : float
+            The dilatation factors of the covariances.
         """
         super().__init__(sampling_strategy=sampling_strategy)
         self.K = K

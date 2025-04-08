@@ -11,7 +11,7 @@ Preprint. <br>
 
 </div>
 
-<p align="center"><img width="95%" src="doc/PLS-3.png" /></p>
+<p align="center"><img width="65%" src="data/logos/image.png"  /></p>
 
 **Abstract:** *This study investigates rare event detection on tabular data within binary classification. Many real-world classification tasks, such as in banking sector, deal with mixed features, which have a significant impact on predictive performances. To this purpose, we introduce MGS-GRF, an oversampling strategy designed for mixed features. This method uses a kernel density estimator with locally estimated full-rank covariances to generate continuous features, while categorical ones are drawn from the original samples through a generalized random forest.*
 
@@ -24,7 +24,27 @@ You will find code to reproduce the paper experiments as well as an nice impleme
   - [Citation](#-citation)
 
 ## ⭐ How to use the MGS-GRF Algorithm to learn on imbalanced data
+Here is a short example on how to use MGS-GRF: 
+```python
+from mgs_grf import MGSGRFOverSampler
+from mgs_grf import DrfSk
 
+## Apply MGS-GRF procedure to oversample the data
+mgs_grf = MGSGRFOverSampler(K=len(numeric_features),categorical_features=categorical_features, Classifier=DrfSk(),random_state=0)
+balanced_X, balanced_y = mgs_grf.fit_resample(X_train,y_train)
+print("Augmented data : ", Counter(balanced_y))
+
+## Encode the categorical variables
+enc = OneHotEncoder(handle_unknown='ignore',sparse_output=False)
+balanced_X_encoded = enc.fit_transform(balanced_X[:,categorical_features])
+balanced_X_final = np.hstack((balanced_X[:,numeric_features],balanced_X_encoded))
+
+# Fit the final classifier on the augmented data
+clf_mgs = lgb.LGBMClassifier(n_estimators=100,verbosity=-1, random_state=0)
+clf_mgs.fit(balanced_X_final, balanced_y)
+
+```
+A more detailed notebook example is available [here](example/example.ipynb).
 
 
 ## ⭐ Reproducing the paper experiments
