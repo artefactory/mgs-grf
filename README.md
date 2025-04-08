@@ -11,7 +11,7 @@ Preprint. <br>
 
 </div>
 
-<p align="center"><img width="95%" src="data/logos/image.png" /></p>
+<p align="center"><img width="65%" src="data/logos/image.png"  /></p>
 
 **Abstract:** *This study investigates rare event detection on tabular data within binary classification. Many real-world classification tasks, such as in banking sector, deal with mixed features, which have a significant impact on predictive performances. To this purpose, we introduce MGS-GRF, an oversampling strategy designed for mixed features. This method uses a kernel density estimator with locally estimated full-rank covariances to generate continuous features, while categorical ones are drawn from the original samples through a generalized random forest.*
 
