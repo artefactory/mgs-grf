@@ -3,4 +3,6 @@
 __version__ = "0.1.0"
 __author__ = "Abdoulaye Sakho"
 
-from .continuous import MGS_GRF2 as MGS_GRF
+from .over_sampling import MGSGRFOverSampler
+from .forest_for_categorical import DrfSk
+from .continuous_oversampler import MGS2 
