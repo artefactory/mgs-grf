@@ -4,26 +4,25 @@ import sys
 sys.path.insert(1, os.path.abspath(os.path.join(os.getcwd(), os.pardir)))
 from pathlib import Path
 
+import lightgbm as lgb
 import numpy as np
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.preprocessing import FunctionTransformer
+from imblearn.over_sampling import SMOTENC, RandomOverSampler
+from imblearn.under_sampling import RandomUnderSampler
 from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import ShuffleSplit
-from imblearn.under_sampling import RandomUnderSampler
-from imblearn.over_sampling import RandomOverSampler, SMOTENC
-import lightgbm as lgb
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import FunctionTransformer, OneHotEncoder
 
+from data.simulated_data import (
+    generate_initial_data_twocat_normal_case2,
+)  ## Run for case2 !!
+from mgs_grf.forest_for_categorical import DrfSk, KNNTies
+from mgs_grf.over_sampling import MGSGRFOverSampler
 from protocols.baselines import (
     NoSampling,
     WMGS_NC_cov,
 )
-from mgs_grf.over_sampling import MGSGRFOverSampler
-from mgs_grf.forest_for_categorical import DrfSk, KNNTies
 from validation.classif_experiments import run_eval
-from data.simulated_data import (
-    generate_initial_data_twocat_normal_case2,
-)  ## Run for case2 !!
 
 
 def to_str(x):
@@ -53,9 +52,7 @@ balanced_clf = lgb.LGBMClassifier(
 )
 
 # all features
-output_dir_path = (
-    "../saved_experiments_categorial_features/sim_coh/2025/lgbm/5ksamples/case2"
-)
+output_dir_path = "../saved_experiments_categorial_features/sim_coh/2025/lgbm/5ksamples/case2"
 Path(output_dir_path).mkdir(parents=True, exist_ok=True)
 init_name_file_original = "2027-01-07-lgbm_"
 
@@ -101,17 +98,13 @@ for i in range(n_iter):
         ),
         (
             "RUS",
-            RandomUnderSampler(
-                sampling_strategy="majority", replacement=False, random_state=i
-            ),
+            RandomUnderSampler(sampling_strategy="majority", replacement=False, random_state=i),
             {},
             model,
         ),
         (
             "SmoteNC (K=5)",
-            SMOTENC(
-                k_neighbors=5, categorical_features=categorical_features, random_state=i
-            ),
+            SMOTENC(k_neighbors=5, categorical_features=categorical_features, random_state=i),
             {},
             model,
         ),

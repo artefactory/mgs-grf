@@ -1,9 +1,9 @@
-import numpy as np
 from collections import Counter
+
+import numpy as np
 from scipy.io.arff import loadarff
 
 ############ SYNTHETIC #########
-
 from sklearn.utils import shuffle
 
 
@@ -76,14 +76,12 @@ def generate_initial_data_onecat(dimension, n_samples, random_state=24, verbose=
         Xf = np.hstack((Xf, curr_covariate))
 
     ### Feature categorical
-    feature_cat_uniform, feature_cat_uniform_numeric = (
-        generate_synthetic_features_logreg(
-            X=Xf,
-            index_informatives=[0, 1, 2],
-            list_modalities=["C", "D"],
-            beta=np.array([-8, 7, 6]),
-            intercept=-2,
-        )
+    feature_cat_uniform, feature_cat_uniform_numeric = generate_synthetic_features_logreg(
+        X=Xf,
+        index_informatives=[0, 1, 2],
+        list_modalities=["C", "D"],
+        beta=np.array([-8, 7, 6]),
+        intercept=-2,
     )
     if verbose == 0:
         print("Composition of categorical feature : ", Counter(feature_cat_uniform))
@@ -100,9 +98,7 @@ def generate_initial_data_onecat(dimension, n_samples, random_state=24, verbose=
     return X_final, target, target_numeric
 
 
-def generate_initial_data_onecat_normal(
-    dimension, n_samples, random_state=24, verbose=0
-):
+def generate_initial_data_onecat_normal(dimension, n_samples, random_state=24, verbose=0):
     np.random.seed(random_state)
     Xf = np.random.multivariate_normal(
         mean=np.zeros((dimension - 1,)),
@@ -110,10 +106,8 @@ def generate_initial_data_onecat_normal(
         size=n_samples,
     )
     ### Feature categorical
-    feature_cat_uniform, feature_cat_uniform_numeric = (
-        generate_synthetic_features_logreg(
-            X=Xf, index_informatives=[0, 1, 2], list_modalities=["C", "D"]
-        )
+    feature_cat_uniform, feature_cat_uniform_numeric = generate_synthetic_features_logreg(
+        X=Xf, index_informatives=[0, 1, 2], list_modalities=["C", "D"]
     )
 
     X_final = np.hstack((Xf, feature_cat_uniform_numeric.reshape(-1, 1)))
@@ -185,27 +179,23 @@ def generate_initial_data_twocat_fit(dimension, n_samples, random_state=123, ver
         curr_covariate = np.random.uniform(low=0, high=1, size=(n_samples, 1))
         Xf = np.hstack((Xf, curr_covariate))
 
-    feature_cat_uniform, feature_cat_uniform_numeric = (
-        generate_synthetic_features_logreg_triple(
-            X=Xf,
-            index_informatives=[0, 1, 2],
-            list_modalities=["A", "B", "C"],
-            beta1=np.array([-8, 7, 6]),
-            beta2=np.array([4, -7, 3]),
-            beta3=np.array([2, -1, 2]),
-        )
+    feature_cat_uniform, feature_cat_uniform_numeric = generate_synthetic_features_logreg_triple(
+        X=Xf,
+        index_informatives=[0, 1, 2],
+        list_modalities=["A", "B", "C"],
+        beta1=np.array([-8, 7, 6]),
+        beta2=np.array([4, -7, 3]),
+        beta3=np.array([2, -1, 2]),
     )
     X_final = np.hstack((Xf, feature_cat_uniform.reshape(-1, 1)))
     X_final_num = np.hstack((Xf, feature_cat_uniform_numeric.reshape(-1, 1)))
-    feature_cat_uniform2, feature_cat_uniform_numeric2 = (
-        generate_synthetic_features_logreg_triple(
-            X=Xf,
-            index_informatives=[0, 1, 2],
-            list_modalities=["D", "E", "F"],
-            beta1=np.array([-4, 5, 6]),
-            beta2=np.array([6, -3, 2]),
-            beta3=np.array([1, 5, -1]),
-        )
+    feature_cat_uniform2, feature_cat_uniform_numeric2 = generate_synthetic_features_logreg_triple(
+        X=Xf,
+        index_informatives=[0, 1, 2],
+        list_modalities=["D", "E", "F"],
+        beta1=np.array([-4, 5, 6]),
+        beta2=np.array([6, -3, 2]),
+        beta3=np.array([1, 5, -1]),
     )
     X_final = np.hstack((X_final, feature_cat_uniform2.reshape(-1, 1)))
     X_final_num = np.hstack((X_final_num, feature_cat_uniform_numeric2.reshape(-1, 1)))
@@ -240,9 +230,7 @@ def generate_initial_data_twocat_fit(dimension, n_samples, random_state=123, ver
     return rf, enc
 
 
-def generate_initial_data_twocat(
-    dimension, n_samples, rf, enc, random_state=24, verbose=0
-):
+def generate_initial_data_twocat(dimension, n_samples, rf, enc, random_state=24, verbose=0):
     np.random.seed(random_state)
     Xf = np.random.uniform(low=0, high=1, size=(n_samples, 1))
     for i in range(dimension - 3):
@@ -250,27 +238,23 @@ def generate_initial_data_twocat(
         curr_covariate = np.random.uniform(low=0, high=1, size=(n_samples, 1))
         Xf = np.hstack((Xf, curr_covariate))
 
-    feature_cat_uniform, feature_cat_uniform_numeric = (
-        generate_synthetic_features_logreg_triple(
-            X=Xf,
-            index_informatives=[0, 1, 2],
-            list_modalities=["A", "B", "C"],
-            beta1=np.array([-8, 7, 6]),
-            beta2=np.array([4, -7, 3]),
-            beta3=np.array([2, -1, 2]),
-        )
+    feature_cat_uniform, feature_cat_uniform_numeric = generate_synthetic_features_logreg_triple(
+        X=Xf,
+        index_informatives=[0, 1, 2],
+        list_modalities=["A", "B", "C"],
+        beta1=np.array([-8, 7, 6]),
+        beta2=np.array([4, -7, 3]),
+        beta3=np.array([2, -1, 2]),
     )
     X_final = np.hstack((Xf, feature_cat_uniform.reshape(-1, 1)))
     X_final_num = np.hstack((Xf, feature_cat_uniform_numeric.reshape(-1, 1)))
-    feature_cat_uniform2, feature_cat_uniform_numeric2 = (
-        generate_synthetic_features_logreg_triple(
-            X=Xf,
-            index_informatives=[0, 1, 2],
-            list_modalities=["D", "E", "F"],
-            beta1=np.array([-4, 5, 6]),
-            beta2=np.array([6, -3, 2]),
-            beta3=np.array([1, 5, -1]),
-        )
+    feature_cat_uniform2, feature_cat_uniform_numeric2 = generate_synthetic_features_logreg_triple(
+        X=Xf,
+        index_informatives=[0, 1, 2],
+        list_modalities=["D", "E", "F"],
+        beta1=np.array([-4, 5, 6]),
+        beta2=np.array([6, -3, 2]),
+        beta3=np.array([1, 5, -1]),
     )
     X_final = np.hstack((X_final, feature_cat_uniform2.reshape(-1, 1)))
     X_final_num = np.hstack((X_final_num, feature_cat_uniform_numeric2.reshape(-1, 1)))
@@ -293,9 +277,7 @@ def generate_initial_data_twocat(
         print("Composition of categorical feature 2 : ", Counter(feature_cat_uniform2))
         print("***************")
 
-    X_final, target = subsample_to_ratio(
-        X=X_final, y=target, ratio=0.1, seed_sub=random_state
-    )
+    X_final, target = subsample_to_ratio(X=X_final, y=target, ratio=0.1, seed_sub=random_state)
 
     if verbose == 2:
         print("Composition of the target ", Counter(target))
@@ -330,10 +312,7 @@ def generate_synthetic_features_multinomial_quadruple(
     # print('array_probas shape :', array_probas.shape)
 
     pred_log = np.array(
-        [
-            np.random.multinomial(n=1, pvals=array_probas[i, :])
-            for i in range(len(array_probas))
-        ]
+        [np.random.multinomial(n=1, pvals=array_probas[i, :]) for i in range(len(array_probas))]
     )
     # pred_log = np.random.multinomial(n=1,pvals=array_probas)
     # pred_log = np.apply_along_axis(np.random.multinomial,1,array_probas,{'n':1})
@@ -374,9 +353,7 @@ def generate_synthetic_features_multinomial_nonuple(
     linear6 = my_log_reg(X[:, index_informatives], beta=beta6, intercept=intercept)
     linear7 = my_log_reg(X[:, index_informatives], beta=beta7, intercept=intercept)
     linear8 = my_log_reg(X[:, index_informatives], beta=beta8, intercept=intercept)
-    sum_linear = (
-        linear1 + linear2 + linear3 + linear4 + linear5 + linear6 + linear7 + linear8
-    )
+    sum_linear = linear1 + linear2 + linear3 + linear4 + linear5 + linear6 + linear7 + linear8
     probas1 = linear1 / (1 + sum_linear)
     probas2 = linear2 / (1 + sum_linear)
     probas3 = linear3 / (1 + sum_linear)
@@ -403,10 +380,7 @@ def generate_synthetic_features_multinomial_nonuple(
     # print('array_probas shape :', array_probas.shape)
 
     pred_log = np.array(
-        [
-            np.random.multinomial(n=1, pvals=array_probas[i, :])
-            for i in range(len(array_probas))
-        ]
+        [np.random.multinomial(n=1, pvals=array_probas[i, :]) for i in range(len(array_probas))]
     )
     # pred_log = np.random.multinomial(n=1,pvals=array_probas)
     # pred_log = np.apply_along_axis(np.random.multinomial,1,array_probas,{'n':1})
@@ -431,9 +405,7 @@ def generate_synthetic_features_multinomial_nonuple(
     return array_final, array_argmax
 
 
-def generate_initial_data_twocat_lgbm5_old(
-    dimension, n_samples, random_state=123, verbose=0
-):
+def generate_initial_data_twocat_lgbm5_old(dimension, n_samples, random_state=123, verbose=0):
     np.random.seed(random_state)
     Xf = np.random.uniform(low=0, high=1, size=(n_samples, 1))
     for i in range(dimension - 3):
@@ -488,15 +460,9 @@ def generate_initial_data_twocat_lgbm5_old(
     # print('target_numeric.shape',target_numeric.shape)
     # print('target_numeric', target_numeric)
 
-    first_cat_feature = np.array(
-        [z_feature_cat_uniform[i][0] for i in range(n_samples)]
-    )
-    second_cat_feature = np.array(
-        [z_feature_cat_uniform[i][1] for i in range(n_samples)]
-    )
-    X_final = np.hstack(
-        (Xf, first_cat_feature.reshape(-1, 1), second_cat_feature.reshape(-1, 1))
-    )
+    first_cat_feature = np.array([z_feature_cat_uniform[i][0] for i in range(n_samples)])
+    second_cat_feature = np.array([z_feature_cat_uniform[i][1] for i in range(n_samples)])
+    X_final = np.hstack((Xf, first_cat_feature.reshape(-1, 1), second_cat_feature.reshape(-1, 1)))
 
     if verbose == 0:
         print("Composition of the target ", Counter(target_numeric))
@@ -561,15 +527,9 @@ def generate_initial_data_twocat_lgbm5_oldcoeffes(
     # print('target_numeric.shape',target_numeric.shape)
     # print('target_numeric', target_numeric)
 
-    first_cat_feature = np.array(
-        [z_feature_cat_uniform[i][0] for i in range(n_samples)]
-    )
-    second_cat_feature = np.array(
-        [z_feature_cat_uniform[i][1] for i in range(n_samples)]
-    )
-    X_final = np.hstack(
-        (Xf, first_cat_feature.reshape(-1, 1), second_cat_feature.reshape(-1, 1))
-    )
+    first_cat_feature = np.array([z_feature_cat_uniform[i][0] for i in range(n_samples)])
+    second_cat_feature = np.array([z_feature_cat_uniform[i][1] for i in range(n_samples)])
+    X_final = np.hstack((Xf, first_cat_feature.reshape(-1, 1), second_cat_feature.reshape(-1, 1)))
 
     if verbose == 0:
         print("Composition of the target ", Counter(target_numeric))
@@ -635,15 +595,9 @@ def generate_initial_data_twocat_lgbm5_19_11_2024(
     # print('target_numeric.shape',target_numeric.shape)
     # print('target_numeric', target_numeric)
 
-    first_cat_feature = np.array(
-        [z_feature_cat_uniform[i][0] for i in range(n_samples)]
-    )
-    second_cat_feature = np.array(
-        [z_feature_cat_uniform[i][1] for i in range(n_samples)]
-    )
-    X_final = np.hstack(
-        (Xf, first_cat_feature.reshape(-1, 1), second_cat_feature.reshape(-1, 1))
-    )
+    first_cat_feature = np.array([z_feature_cat_uniform[i][0] for i in range(n_samples)])
+    second_cat_feature = np.array([z_feature_cat_uniform[i][1] for i in range(n_samples)])
+    X_final = np.hstack((Xf, first_cat_feature.reshape(-1, 1), second_cat_feature.reshape(-1, 1)))
 
     if verbose == 0:
         print("Composition of the target ", Counter(target_numeric))
@@ -710,15 +664,9 @@ def generate_initial_data_twocat_lgbm5(
     # print('target_numeric.shape',target_numeric.shape)
     # print('target_numeric', target_numeric)
 
-    first_cat_feature = np.array(
-        [z_feature_cat_uniform[i][0] for i in range(n_samples)]
-    )
-    second_cat_feature = np.array(
-        [z_feature_cat_uniform[i][1] for i in range(n_samples)]
-    )
-    X_final = np.hstack(
-        (Xf, first_cat_feature.reshape(-1, 1), second_cat_feature.reshape(-1, 1))
-    )
+    first_cat_feature = np.array([z_feature_cat_uniform[i][0] for i in range(n_samples)])
+    second_cat_feature = np.array([z_feature_cat_uniform[i][1] for i in range(n_samples)])
+    X_final = np.hstack((Xf, first_cat_feature.reshape(-1, 1), second_cat_feature.reshape(-1, 1)))
 
     if verbose == 0:
         print("Composition of the target ", Counter(target_numeric))

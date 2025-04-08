@@ -1,12 +1,11 @@
 import numpy as np
-
 from imblearn.over_sampling import SMOTE
 from imblearn.over_sampling.base import BaseOverSampler
-from sklearn.neighbors import NearestNeighbors
 from sklearn.metrics import roc_auc_score
+from sklearn.neighbors import NearestNeighbors
 
 
-class CVSmoteModel(object):
+class CVSmoteModel:
     """
     CVSmoteModel. It's an estimator and not a oversampling strategy only like the others class in this file.
     """
@@ -56,22 +55,16 @@ class CVSmoteModel(object):
             max(int(0.5 * positive_n), 1),
             max(int(0.7 * positive_n), 1),
         ]
-        list_k_neighbors.extend(
-            list(np.arange(1, self.list_k_max, self.list_k_step, dtype=int))
-        )
+        list_k_neighbors.extend(list(np.arange(1, self.list_k_max, self.list_k_step, dtype=int)))
 
         best_score = -1
-        folds = list(
-            self.splitter.split(X, y)
-        )  # you really need to transform it into a list ?
+        folds = list(self.splitter.split(X, y))  # you really need to transform it into a list ?
         for k in list_k_neighbors:
             scores = []
             for train, test in folds:
                 new_X, new_y = SMOTE(k_neighbors=k).fit_resample(X[train], y[train])
                 self.model.fit(X=new_X, y=new_y, sample_weight=sample_weight)
-                scores.append(
-                    roc_auc_score(y[test], self.model.predict_proba(X[test])[:, 1])
-                )
+                scores.append(roc_auc_score(y[test], self.model.predict_proba(X[test])[:, 1]))
             if sum(scores) > best_score:
                 best_k = k
 
@@ -119,9 +112,7 @@ class MGS(BaseOverSampler):
     MGS : Multivariate Gaussian SMOTE
     """
 
-    def __init__(
-        self, K, n_points=None, llambda=1.0, sampling_strategy="auto", random_state=None
-    ):
+    def __init__(self, K, n_points=None, llambda=1.0, sampling_strategy="auto", random_state=None):
         """
         llambda is a float.
         """
@@ -143,9 +134,7 @@ class MGS(BaseOverSampler):
         if y is None:
             X_positifs = X
             X_negatifs = np.ones((0, X.shape[1]))
-            assert (
-                n_final_sample is not None
-            ), "You need to provide a number of final samples."
+            assert n_final_sample is not None, "You need to provide a number of final samples."
         else:
             X_positifs = X[y == 1]
             X_negatifs = X[y == 0]
@@ -177,21 +166,15 @@ class MGS(BaseOverSampler):
             sigma = (
                 self.llambda
                 * (1 / self.K + 1)
-                * (X_positifs[indice_neighbors, :] - mu).T.dot(
-                    (X_positifs[indice_neighbors, :] - mu)
-                )
+                * (X_positifs[indice_neighbors, :] - mu).T.dot(X_positifs[indice_neighbors, :] - mu)
             )
 
-            new_observation = np.random.multivariate_normal(
-                mu, sigma, check_valid="raise"
-            ).T
+            new_observation = np.random.multivariate_normal(mu, sigma, check_valid="raise").T
             new_samples[i, :] = new_observation
         np.random.seed()
 
         oversampled_X = np.concatenate((X_negatifs, X_positifs, new_samples), axis=0)
-        oversampled_y = np.hstack(
-            (np.full(len(X_negatifs), 0), np.full((n_final_sample,), 1))
-        )
+        oversampled_y = np.hstack((np.full(len(X_negatifs), 0), np.full((n_final_sample,), 1)))
 
         return oversampled_X, oversampled_y
 
@@ -246,14 +229,14 @@ class MGS2(BaseOverSampler):
             The target values. If None, all samples are considered positive.
         n_final_sample : int, optional
             The number of final samples. If None, the number of negative samples is used.
-        
+
         Returns
         -------
         X_resampled : array-like, shape (n_samples + n_synthetic_samples, n_features)
             The resampled input samples.
         y_resampled : array-like, shape (n_samples + n_synthetic_samples,)
             The resampled target values.
-       
+
         Raises
         ------
         ValueError
@@ -265,9 +248,7 @@ class MGS2(BaseOverSampler):
         if y is None:
             X_positifs = X
             X_negatifs = np.ones((0, X.shape[1]))
-            assert (
-                n_final_sample is not None
-            ), "You need to provide a number of final samples."
+            assert n_final_sample is not None, "You need to provide a number of final samples."
         else:
             X_positifs = X[y == 1]
             X_negatifs = X[y == 0]
@@ -294,9 +275,7 @@ class MGS2(BaseOverSampler):
             mus = (1 / (self.K + 1)) * all_neighbors.reshape(
                 len(X_positifs), self.K + 1, dimension
             ).sum(axis=1)
-        centered_X = X_positifs[neighbors_by_index.flatten()] - np.repeat(
-            mus, self.K + 1, axis=0
-        )
+        centered_X = X_positifs[neighbors_by_index.flatten()] - np.repeat(mus, self.K + 1, axis=0)
         centered_X = centered_X.reshape(len(X_positifs), self.K + 1, dimension)
 
         if self.weighted_cov:
@@ -306,31 +285,21 @@ class MGS2(BaseOverSampler):
             # inv sqrt for positives only and half of power for multiplication below
             distances /= distances.sum(axis=-1)[:, np.newaxis]
             centered_X = (
-                np.repeat(distances[:, :, np.newaxis] ** 0.5, dimension, axis=2)
-                * centered_X
+                np.repeat(distances[:, :, np.newaxis] ** 0.5, dimension, axis=2) * centered_X
             )
 
-        covs = (
-            self.llambda
-            * np.matmul(np.swapaxes(centered_X, 1, 2), centered_X)
-            / (self.K + 1)
-        )
+        covs = self.llambda * np.matmul(np.swapaxes(centered_X, 1, 2), centered_X) / (self.K + 1)
 
         if self.kind_sampling == "svd":
             # spectral decomposition of all covariances
             eigen_values, eigen_vectors = np.linalg.eigh(covs)  ## long
-            eigen_values[eigen_values > 1e-10] = (
-                eigen_values[eigen_values > 1e-10] ** 0.5
-            )
-            As = [
-                eigen_vectors[i].dot(eigen_values[i]) for i in range(len(eigen_values))
-            ]
+            eigen_values[eigen_values > 1e-10] = eigen_values[eigen_values > 1e-10] ** 0.5
+            As = [eigen_vectors[i].dot(eigen_values[i]) for i in range(len(eigen_values))]
         elif self.kind_sampling == "cholesky":
             As = np.linalg.cholesky(covs + 1e-10 * np.identity(dimension))
         else:
             raise ValueError(
-                "kind_sampling of MGS not supported"
-                "Available values : 'cholescky','svd' "
+                "kind_sampling of MGS not supportedAvailable values : 'cholescky','svd' "
             )
         np.random.seed(self.random_state)
 
@@ -343,8 +312,6 @@ class MGS2(BaseOverSampler):
         np.random.seed()
 
         oversampled_X = np.concatenate((X_negatifs, X_positifs, new_samples), axis=0)
-        oversampled_y = np.hstack(
-            (np.full(len(X_negatifs), 0), np.full((n_final_sample,), 1))
-        )
+        oversampled_y = np.hstack((np.full(len(X_negatifs), 0), np.full((n_final_sample,), 1)))
 
         return oversampled_X, oversampled_y

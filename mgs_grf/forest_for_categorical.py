@@ -1,20 +1,19 @@
-import numpy as np
+from collections import namedtuple  ## KNN
 
+import numpy as np
 from sklearn.ensemble import (
-    RandomForestClassifier,
-    RandomForestRegressor,
     ExtraTreesClassifier,
     ExtraTreesRegressor,
+    RandomForestClassifier,
+    RandomForestRegressor,
 )
-
-from collections import namedtuple  ## KNN
+from sklearn.metrics._pairwise_distances_reduction import ArgKminClassMode
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neighbors._base import NeighborsBase, _get_weights
+from sklearn.utils._param_validation import StrOptions
 from sklearn.utils.arrayfuncs import _all_with_any_reduction_axis_1
 from sklearn.utils.extmath import weighted_mode
 from sklearn.utils.validation import _num_samples, check_is_fitted
-from sklearn.metrics._pairwise_distances_reduction import ArgKminClassMode
-from sklearn.neighbors._base import _get_weights, NeighborsBase
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.utils._param_validation import StrOptions
 
 
 def iterative_random_choice(probas):
@@ -40,9 +39,7 @@ class DrfFitPredictMixin:
         )  # train_samples_leaves: size n_train x n_trees
 
     def get_weights(self, X):
-        leafs_by_sample = (
-            super().apply(X).astype(np.int32)
-        )  # taille n_samples x n_trees
+        leafs_by_sample = super().apply(X).astype(np.int32)  # taille n_samples x n_trees
         leaves_match = np.array(
             [leafs_by_sample[i] == self.train_samples_leaves for i in range(len(X))]
         )
