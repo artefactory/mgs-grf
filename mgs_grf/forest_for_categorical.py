@@ -20,6 +20,11 @@ from sklearn.utils.validation import _num_samples, check_is_fitted
 def iterative_random_choice(probas):
     """
     Function for applying a np.random.choice several times with succesive values of probas
+    
+    Parameters
+        ----------
+        probas : np.array like
+            Probabilities of the samples.
     """
     thresholds = np.random.uniform(size=len(probas))
     cumulative_weights = np.cumsum(probas, axis=1)
