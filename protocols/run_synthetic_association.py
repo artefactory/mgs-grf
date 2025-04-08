@@ -14,8 +14,8 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, OneHotEncoder
 
 from data.simulated_data import generate_initial_data_onecat
-from mgs_grf.forest_for_categorical import DrfSk
-from mgs_grf.over_sampling import MGSGRFOverSampler
+from mgs_grf import DrfSk
+from mgs_grf import MGSGRFOverSampler
 from protocols.baselines import (
     NoSampling,
     WMGS_NC_cov,
