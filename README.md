@@ -27,10 +27,9 @@ You will find code to reproduce the paper experiments as well as an nice impleme
 Here is a short example on how to use MGS-GRF: 
 ```python
 from mgs_grf import MGSGRFOverSampler
-from mgs_grf import DrfSk
 
 ## Apply MGS-GRF procedure to oversample the data
-mgs_grf = MGSGRFOverSampler(K=len(numeric_features),categorical_features=categorical_features, Classifier=DrfSk(),random_state=0)
+mgs_grf = MGSGRFOverSampler(K=len(numeric_features),categorical_features=categorical_features,random_state=0)
 balanced_X, balanced_y = mgs_grf.fit_resample(X_train,y_train)
 print("Augmented data : ", Counter(balanced_y))
 
