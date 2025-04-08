@@ -1,6 +1,6 @@
 import numpy as np
-from imblearn.over_sampling import SMOTE
 
+from imblearn.over_sampling import SMOTE
 from imblearn.over_sampling.base import BaseOverSampler
 from sklearn.neighbors import NearestNeighbors
 from sklearn.metrics import roc_auc_score
@@ -12,14 +12,14 @@ class CVSmoteModel(object):
     """
 
     def __init__(self, splitter, model, list_k_max=100, list_k_step=10):
-        """_summary_
+        """Initializes the CVSmoteModel.
 
         Parameters
         ----------
         splitter : sk-learn spliter object (or child)
-            _description_
-        model : _type_
-            _description_
+            Describes how to split the data into train and test sets.
+        model : sklearn model
+            model to be used for the classification.
         list_k_max : int, optional
             _description_, by default 100
         list_k_step : int, optional
@@ -33,18 +33,28 @@ class CVSmoteModel(object):
 
     def fit(self, X, y, sample_weight=None):
         """
-        X and y are numpy arrays
-        sample_weight is a numpy array
-        """
+        Estimates the model using cross-validation without rebalancing strategy.
 
-        n_positifs = np.array(y, dtype=bool).sum()
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Training vectors, where `n_samples` is the number of samples
+            and `n_features` is the number of features.
+
+        y : array-like of shape (n_samples,)
+            Target values.
+
+        sample_weight : array-like of shape (n_samples,), default=None
+            Weights applied to individual samples (1. for unweighted).
+        """
+        positive_n = np.array(y, dtype=bool).sum()
         list_k_neighbors = [
             5,
-            max(int(0.01 * n_positifs), 1),
-            max(int(0.1 * n_positifs), 1),
-            max(int(np.sqrt(n_positifs)), 1),
-            max(int(0.5 * n_positifs), 1),
-            max(int(0.7 * n_positifs), 1),
+            max(int(0.01 * positive_n), 1),
+            max(int(0.1 * positive_n), 1),
+            max(int(np.sqrt(positive_n)), 1),
+            max(int(0.5 * positive_n), 1),
+            max(int(0.7 * positive_n), 1),
         ]
         list_k_neighbors.extend(
             list(np.arange(1, self.list_k_max, self.list_k_step, dtype=int))
@@ -72,13 +82,34 @@ class CVSmoteModel(object):
 
     def predict(self, X):
         """
-        predict
+        Perform classification on an array of test vectors X.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            The input samples.
+
+        Returns
+        -------
+        C : ndarray of shape (n_samples,)
+            Predicted target values for X.
         """
         return self.model.predict(X)
 
     def predict_proba(self, X):
-        """
-        predict_probas
+        """Return probability estimates for the test vector X.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            The input samples.
+
+        Returns
+        -------
+        C : array-like of shape (n_samples, n_classes)
+            Returns the probability of the samples for each class in
+            the model. The columns correspond to the classes in sorted
+            order, as they appear in the attribute :term:`classes_`.
         """
         return self.model.predict_proba(X)
 
@@ -167,32 +198,68 @@ class MGS(BaseOverSampler):
 
 class MGS2(BaseOverSampler):
     """
-    MGS2 : Faster version of MGS using SVD decomposition
+    MGS2 is a faster version of MGS that uses SVD decomposition for ...
     """
 
     def __init__(
         self,
         K,
-        llambda=1.0,
+        lambda_value=1.0,
         sampling_strategy="auto",
         random_state=None,
         weighted_cov=False,
         kind_sampling="cholesky",
     ):
         """
-        llambda is a float.
+        Initalizes the MGS class.
+
+        Parameters
+        ----------
+        K : int
+            Number of neighbors to consider.
+        lambda_value : float, optional
+            Parameter for covariance matrix, by default 1.0
+        sampling_strategy : str, optional
+            Sampling strategy, by default "auto"
+        random_state : int, optional
+            Random state for reproducibility, by default None
+        weighted_cov : bool, optional
+            If True, use weighted covariance, by default False
+        kind_sampling : str, optional
+            Kind of sampling to use, either "cholesky" or "svd", by default "cholesky"
         """
         super().__init__(sampling_strategy=sampling_strategy)
         self.K = K
-        self.llambda = llambda
+        self.llambda = lambda_value
         self.random_state = random_state
         self.weighted_cov = weighted_cov
         self.kind_sampling = kind_sampling
 
     def _fit_resample(self, X, y=None, n_final_sample=None):
         """
-        if y=None, all points are considered positive, and oversampling on all X
-        if n_final_sample=None, objective is balanced data.
+        Fit the model and resample the data.
+        Parameters
+        ----------
+        X : array-like, shape (n_samples, n_features)
+            The input samples.
+        y : array-like, shape (n_samples,), optional
+            The target values. If None, all samples are considered positive.
+        n_final_sample : int, optional
+            The number of final samples. If None, the number of negative samples is used.
+        
+        Returns
+        -------
+        X_resampled : array-like, shape (n_samples + n_synthetic_samples, n_features)
+            The resampled input samples.
+        y_resampled : array-like, shape (n_samples + n_synthetic_samples,)
+            The resampled target values.
+       
+        Raises
+        ------
+        ValueError
+            If `kind_sampling` is not "cholesky" or "svd".
+        AssertionError
+            If `y` is None and `n_final_sample` is None.
         """
 
         if y is None:
