@@ -1,20 +1,20 @@
-import numpy as np
+"""Generlized Random Forest for categorical variables."""
+from collections import namedtuple
 
+import numpy as np
 from sklearn.ensemble import (
-    RandomForestClassifier,
-    RandomForestRegressor,
     ExtraTreesClassifier,
     ExtraTreesRegressor,
+    RandomForestClassifier,
+    RandomForestRegressor,
 )
-
-from collections import namedtuple  ## KNN
+from sklearn.metrics._pairwise_distances_reduction import ArgKminClassMode
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neighbors._base import NeighborsBase, _get_weights
+from sklearn.utils._param_validation import StrOptions
 from sklearn.utils.arrayfuncs import _all_with_any_reduction_axis_1
 from sklearn.utils.extmath import weighted_mode
 from sklearn.utils.validation import _num_samples, check_is_fitted
-from sklearn.metrics._pairwise_distances_reduction import ArgKminClassMode
-from sklearn.neighbors._base import _get_weights, NeighborsBase
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.utils._param_validation import StrOptions
 
 
 def iterative_random_choice(probas):
@@ -40,9 +40,7 @@ class DrfFitPredictMixin:
         )  # train_samples_leaves: size n_train x n_trees
 
     def get_weights(self, X):
-        leafs_by_sample = (
-            super().apply(X).astype(np.int32)
-        )  # taille n_samples x n_trees
+        leafs_by_sample = super().apply(X).astype(np.int32)  # taille n_samples x n_trees
         leaves_match = np.array(
             [leafs_by_sample[i] == self.train_samples_leaves for i in range(len(X))]
         )
@@ -50,8 +48,7 @@ class DrfFitPredictMixin:
         # leaves_match = leaves_match.astype(np.float16)
         # leaves_match /= n_by_tree
         # w = leaves_match.mean(axis=2) # taille n_samples x n_train
-        w = (leaves_match / n_by_tree).mean(axis=2)  # taille n_samples x n_train
-        return w
+        return (leaves_match / n_by_tree).mean(axis=2)  # taille n_samples x n_train
 
     def predict(self, X, batch_size=None):
         """
@@ -65,8 +62,7 @@ class DrfFitPredictMixin:
             for batch in np.array_split(X, len(X) // batch_size):
                 list_weights.extend(self.get_weights(batch))
             weights = np.array(list_weights)  # n_samples x n_train
-        res = self.train_y[iterative_random_choice(weights)]
-        return res
+        return self.train_y[iterative_random_choice(weights)]
 
 
 class DrfSk(DrfFitPredictMixin, RandomForestClassifier):
@@ -89,6 +85,20 @@ ModeResult = namedtuple("ModeResult", ("mode", "count"))
 
 
 def mode_rand(a, axis):
+    """_summary_.
+
+    Parameters
+    ----------
+    a : _type_
+        _description_
+    axis : _type_
+        _description_
+
+    Returns
+    -------
+    _type_
+        _description_
+    """
     in_dims = list(range(a.ndim))
     a_view = np.transpose(a, in_dims[:axis] + in_dims[axis + 1 :] + [axis])
 
@@ -107,6 +117,7 @@ def mode_rand(a, axis):
 
 
 class KNNTies(KNeighborsClassifier):
+    """KNN with ties."""
     _parameter_constraints: dict = {**NeighborsBase._parameter_constraints}
     _parameter_constraints.pop("radius")
     _parameter_constraints.update(
@@ -125,6 +136,27 @@ class KNNTies(KNeighborsClassifier):
         metric_params=None,
         n_jobs=None,
     ):
+        """_summary_.
+
+        Parameters
+        ----------
+        n_neighbors : int, optional
+            _description_, by default 5
+        weights : str, optional
+            _description_, by default "uniform"
+        algorithm : str, optional
+            _description_, by default "auto"
+        leaf_size : int, optional
+            _description_, by default 30
+        p : int, optional
+            _description_, by default 2
+        metric : str, optional
+            _description_, by default "minkowski"
+        metric_params : _type_, optional
+            _description_, by default None
+        n_jobs : _type_, optional
+            _description_, by default None
+        """
         super().__init__(
             n_neighbors,
             weights=weights,
@@ -137,7 +169,23 @@ class KNNTies(KNeighborsClassifier):
         )
 
     def kneighbors(self, X=None, n_neighbors=None, return_distance=True):
-        if n_neighbors == None:
+        """_summary_.
+
+        Parameters
+        ----------
+        X : _type_, optional
+            _description_, by default None
+        n_neighbors : _type_, optional
+            _description_, by default None
+        return_distance : bool, optional
+            _description_, by default True
+
+        Returns
+        -------
+        _type_
+            _description_
+        """
+        if n_neighbors is None:
             n_neighbors = self.n_neighbors + 1
         else:
             n_neighbors = n_neighbors + 1
@@ -147,11 +195,10 @@ class KNNTies(KNeighborsClassifier):
                 X=X, n_neighbors=n_neighbors, return_distance=return_distance
             )
             return neigh_dist[:, 1:], neigh_ind[:, 1:]
-        else:
-            neigh_ind = super().kneighbors(
+        neigh_ind = super().kneighbors(
                 X=X, n_neighbors=n_neighbors, return_distance=return_distance
             )
-            return neigh_ind[:, 1:]
+        return neigh_ind[:, 1:]
 
     def predict(self, X):
         """Predict the class labels for the provided data.

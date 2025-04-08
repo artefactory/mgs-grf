@@ -1,19 +1,16 @@
+"""Over-sampling module for MGS-GRF."""
 import math
 
 import numpy as np
-
 from imblearn.over_sampling.base import BaseOverSampler
-from sklearn.neighbors import NearestNeighbors
-from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder
-from sklearn.preprocessing import StandardScaler
-from sklearn.covariance import ledoit_wolf, oas, empirical_covariance
 from imblearn.utils import check_target_type
+from sklearn.covariance import empirical_covariance, ledoit_wolf, oas
+from sklearn.neighbors import NearestNeighbors
+from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 
 
 class MGSGRFOverSampler(BaseOverSampler):
-    """
-    MGS-GRF oversampling strategy.
-    """
+    """MGS-GRF oversampling strategy."""
 
     def __init__(
         self,
@@ -36,8 +33,46 @@ class MGSGRFOverSampler(BaseOverSampler):
         bool_drfsk_regressor=False,
         fit_nn_on_continuous_only=True,
     ):
-        """
-        llambda is a float.
+        """_summary_.
+
+        Parameters
+        ----------
+        K : _type_
+            _description_
+        categorical_features : _type_
+            _description_
+        Classifier : _type_
+            _description_
+        kind_sampling : str, optional
+            _description_, by default "cholesky"
+        kind_cov : str, optional
+            _description_, by default "EmpCov"
+        mucentered : bool, optional
+            _description_, by default True
+        to_encode : bool, optional
+            _description_, by default False
+        to_encode_onehot : bool, optional
+            _description_, by default False
+        n_points : _type_, optional
+            _description_, by default None
+        llambda : float, optional
+            _description_, by default 1.0
+        sampling_strategy : str, optional
+            _description_, by default "auto"
+        random_state : _type_, optional
+            _description_, by default None
+        bool_drf : bool, optional
+            _description_, by default False
+        bool_rf : bool, optional
+            _description_, by default False
+        bool_rf_str : bool, optional
+            _description_, by default False
+        bool_rf_regressor : bool, optional
+            _description_, by default False
+        bool_drfsk_regressor : bool, optional
+            _description_, by default False
+        fit_nn_on_continuous_only : bool, optional
+            _description_, by default True
         """
         super().__init__(sampling_strategy=sampling_strategy)
         self.K = K
@@ -56,16 +91,33 @@ class MGSGRFOverSampler(BaseOverSampler):
         self.to_encode_onehot = (
             to_encode_onehot  ## encode categorical Z vector with one hot encoding
         )
-        self.bool_rf = bool_rf  ## Perform special predictt of RFClassifier when to_encode_onehot=True
+        self.bool_rf = (
+            bool_rf  ## Perform special predictt of RFClassifier when to_encode_onehot=True
+        )
         self.bool_rf_str = bool_rf_str  ## Do not use with encoding
-        self.bool_rf_regressor = bool_rf_regressor  ##Perform special predictt of RFRegressor in when to_encode_onehot=True
+        # Perform special predict of RFRegressor in when to_encode_onehot=True
+        self.bool_rf_regressor = bool_rf_regressor
         self.bool_drfsk_regressor = bool_drfsk_regressor
         self.bool_drf = bool_drf
         self.fit_nn_on_continuous_only = fit_nn_on_continuous_only
 
     def _check_X_y(self, X, y):
-        """Overwrite the checking to let pass some string for categorical
-        features.
+        """Check that .
+
+        In particualr, the checking is changed to let some string for categorical
+        features pass.
+
+        Parameters
+        ----------
+        X : _type_
+            _description_
+        y : _type_
+            _description_
+
+        Returns
+        -------
+        _type_
+            _description_
         """
         y, binarize_y = check_target_type(y, indicate_one_vs_all=True)
         # X = _check_X(X)
@@ -74,6 +126,13 @@ class MGSGRFOverSampler(BaseOverSampler):
         return X, y, binarize_y
 
     def _validate_estimator(self):
+        """_summary_.
+
+        Raises
+        ------
+        ValueError
+            _description_
+        """
         super()._validate_estimator()
         if self.categorical_features_.size == 0:
             raise ValueError(
@@ -81,14 +140,45 @@ class MGSGRFOverSampler(BaseOverSampler):
                 "features. It requires some categorical features."
             )
 
-    def array_of_lists_to_array(
-        self, arr
-    ):  ## Used when calling fit_resampl with  bool_rf_str=True
+    def array_of_lists_to_array(self, arr):
+        """_summary_.
+
+        Parameters
+        ----------
+        arr : _type_
+            _description_
+
+        Returns
+        -------
+        _type_
+            _description_
+        """
         return np.apply_along_axis(lambda a: np.array(a[0]), -1, arr[..., None])
 
-    def _fit_resample_continuous(
-        self, n_synthetic_sample, X_positifs, X_positifs_categorical=None
-    ):
+    def _fit_resample_continuous(self, n_synthetic_sample, X_positifs, X_positifs_categorical=None):
+        """_summary_.
+
+        Parameters
+        ----------
+        n_synthetic_sample : _type_
+            _description_
+        X_positifs : _type_
+            _description_
+        X_positifs_categorical : _type_, optional
+            _description_, by default None
+
+        Returns
+        -------
+        _type_
+            _description_
+
+        Raises
+        ------
+        ValueError
+            _description_
+        ValueError
+            _description_
+        """
         X_positifs = X_positifs.astype(float)
         n_minoritaire = X_positifs.shape[0]
         dimension_continuous = X_positifs.shape[1]  ## features continues seulement
@@ -105,20 +195,15 @@ class MGSGRFOverSampler(BaseOverSampler):
             )
         else:  # We fit the nn estimator on the continuous features and add the mean (NC like).
             enc = OneHotEncoder(handle_unknown="ignore")  ## encoding
-            X_positifs_categorical_enc = enc.fit_transform(
-                X_positifs_categorical
-            ).toarray()
-            X_positifs_all_features_enc = np.hstack(
-                (X_positifs, X_positifs_categorical_enc)
-            )
+            X_positifs_categorical_enc = enc.fit_transform(X_positifs_categorical).toarray()
+            X_positifs_all_features_enc = np.hstack((X_positifs, X_positifs_categorical_enc))
             cste_med = np.median(
                 np.sqrt(np.var(X_positifs, axis=0))
             )  ## med constante from continuous variables
             if not math.isclose(cste_med, 0):
-                X_positifs_all_features_enc[:, dimension_continuous:] = (
-                    X_positifs_all_features_enc[:, dimension_continuous:]
-                    * (cste_med / np.sqrt(2))
-                )
+                X_positifs_all_features_enc[:, dimension_continuous:] = X_positifs_all_features_enc[
+                    :, dimension_continuous:
+                ] * (cste_med / np.sqrt(2))
                 # With one-hot encoding, the median will be repeated twice. We need
             # to divide by sqrt(2) such that we only have one median value
             # contributing to the Euclidean distance
@@ -144,9 +229,7 @@ class MGSGRFOverSampler(BaseOverSampler):
             centered_X = X_positifs[neighbor_by_index.flatten()] - np.repeat(
                 mus, self.K + 1, axis=0
             )
-            centered_X = centered_X.reshape(
-                len(X_positifs), self.K + 1, dimension_continuous
-            )
+            centered_X = centered_X.reshape(len(X_positifs), self.K + 1, dimension_continuous)
             if self.kind_cov == "InvWeightCov":
                 distances = (centered_X**2).sum(axis=-1)
                 distances[distances > 1e-10] = distances[distances > 1e-10] ** -0.25
@@ -154,41 +237,30 @@ class MGSGRFOverSampler(BaseOverSampler):
                 # inv sqrt for positives only and half of power for multiplication below
                 distances /= distances.sum(axis=-1)[:, np.newaxis]
                 centered_X = (
-                    np.repeat(
-                        distances[:, :, np.newaxis] ** 0.5, dimension_continuous, axis=2
-                    )
+                    np.repeat(distances[:, :, np.newaxis] ** 0.5, dimension_continuous, axis=2)
                     * centered_X
                 )
 
             covs = (
-                self.llambda
-                * np.matmul(np.swapaxes(centered_X, 1, 2), centered_X)
-                / (self.K + 1)
+                self.llambda * np.matmul(np.swapaxes(centered_X, 1, 2), centered_X) / (self.K + 1)
             )
             if self.kind_sampling == "svd":
                 # spectral decomposition of all covariances
                 eigen_values, eigen_vectors = np.linalg.eigh(covs)  ## long
-                eigen_values[eigen_values > 1e-10] = (
-                    eigen_values[eigen_values > 1e-10] ** 0.5
-                )
-                As = [
-                    eigen_vectors[i].dot(eigen_values[i])
-                    for i in range(len(eigen_values))
-                ]
+                eigen_values[eigen_values > 1e-10] = eigen_values[eigen_values > 1e-10] ** 0.5
+                As = [eigen_vectors[i].dot(eigen_values[i]) for i in range(len(eigen_values))]
             elif self.kind_sampling == "cholesky":
                 As = np.linalg.cholesky(covs + 1e-8 * np.identity(dimension_continuous))
             else:
                 raise ValueError(
-                    "kind_sampling of MGS not supported"
-                    "Available values : 'cholescky','svd' "
+                    "kind_sampling of MGS not supportedAvailable values : 'cholescky','svd' "
                 )
 
         elif self.kind_cov == "LWCov":
             As = []
             for i in range(n_minoritaire):
                 covariance, shrinkage = ledoit_wolf(
-                    X_positifs[neighbor_by_index[i, 1:], :]
-                    - mus[neighbor_by_index[i, 0]],
+                    X_positifs[neighbor_by_index[i, 1:], :] - mus[neighbor_by_index[i, 0]],
                     assume_centered=True,
                 )
                 As.append(self.llambda * covariance)
@@ -198,8 +270,7 @@ class MGSGRFOverSampler(BaseOverSampler):
             As = []
             for i in range(n_minoritaire):
                 covariance, shrinkage = oas(
-                    X_positifs[neighbor_by_index[i, 1:], :]
-                    - mus[neighbor_by_index[i, 0]],
+                    X_positifs[neighbor_by_index[i, 1:], :] - mus[neighbor_by_index[i, 0]],
                     assume_centered=True,
                 )
                 As.append(self.llambda * covariance)
@@ -209,8 +280,7 @@ class MGSGRFOverSampler(BaseOverSampler):
             p = X_positifs.shape[1]
             for i in range(n_minoritaire):
                 covariance = empirical_covariance(
-                    X_positifs[neighbor_by_index[i, 1:], :]
-                    - mus[neighbor_by_index[i, 0]],
+                    X_positifs[neighbor_by_index[i, 1:], :] - mus[neighbor_by_index[i, 0]],
                     assume_centered=True,
                 )
                 final_covariance = (np.trace(covariance) / p) * np.eye(p)
@@ -227,10 +297,7 @@ class MGSGRFOverSampler(BaseOverSampler):
             As = []
             p = X_positifs.shape[1]
             for i in range(n_minoritaire):
-                diffs = (
-                    X_positifs[neighbor_by_index[i, 1:], :]
-                    - mus[neighbor_by_index[i, 0]]
-                )
+                diffs = X_positifs[neighbor_by_index[i, 1:], :] - mus[neighbor_by_index[i, 0]]
                 exp_dist = np.exp(-np.linalg.norm(diffs, axis=1))
                 weights = exp_dist / (np.sum(exp_dist))
                 final_covariance = (diffs.T.dot(np.diag(weights)).dot(diffs)) + np.eye(
@@ -242,11 +309,10 @@ class MGSGRFOverSampler(BaseOverSampler):
         else:
             raise ValueError(
                 "kind_cov of MGS not supported"
-                "Available values : 'EmpCov','InvWeightCov','LWCov','OASCov','TraceCov','IdCov','ExpCov' "
+                "Available values : 'EmpCov','InvWeightCov','LWCov',\
+                'OASCov','TraceCov','IdCov','ExpCov' "
             )
         # sampling all new points
-
-        # new_samples = [mus[central_point] + As[central_point].dot(u[central_point]) for central_points in indices]
         indices = np.random.randint(n_minoritaire, size=n_synthetic_sample)
         u = np.random.normal(loc=0, scale=1, size=(len(indices), dimension_continuous))
         new_samples = np.zeros((n_synthetic_sample, dimension_continuous))
@@ -257,9 +323,7 @@ class MGSGRFOverSampler(BaseOverSampler):
 
         return new_samples
 
-    def _fit_resample_categorical(
-        self, new_samples, X_positifs, X_positifs_categorical
-    ):
+    def _fit_resample_categorical(self, new_samples, X_positifs, X_positifs_categorical):
         n_minoritaire = X_positifs.shape[0]
         if self.to_encode:
             ord_encoder = OrdinalEncoder(
@@ -279,9 +343,10 @@ class MGSGRFOverSampler(BaseOverSampler):
             X_positifs_categorical_encoded = onehot_encoder.fit_transform(
                 X_positifs_categorical.astype(str)
             )
-            if (
-                self.bool_rf_regressor or self.bool_drfsk_regressor
-            ):  ## When using regressorsn the data are scaled. Because regressor predict is tretaed diffrently (probas got diffrently)
+
+            # When using regressorsn the data are scaled.
+            # Because regressor predict is tretaed diffrently (probas got diffrently)
+            if self.bool_rf_regressor or self.bool_drfsk_regressor:
                 var_scaler_cat = StandardScaler(with_mean=False, with_std=True)
                 X_positifs_categorical_encoded = var_scaler_cat.fit_transform(
                     X_positifs_categorical_encoded
@@ -292,9 +357,7 @@ class MGSGRFOverSampler(BaseOverSampler):
             )  # learn on continuous features in order to predict categorical feature
         elif self.bool_rf_str:  # case RFc on the concatenated strings modalities
             # type_cat = X_positifs_categorical.astype(str).dtype
-            sep_array = np.full(
-                (n_minoritaire, len(self.categorical_features) - 1), ",", dtype=str
-            )
+            sep_array = np.full((n_minoritaire, len(self.categorical_features) - 1), ",", dtype=str)
             sep_array = np.hstack(
                 (sep_array, np.full((n_minoritaire, 1), "", dtype=str))
             )  # We do not want an comma after the last modality
@@ -304,12 +367,11 @@ class MGSGRFOverSampler(BaseOverSampler):
             X_positifs_categorical_str = X_positifs_categorical_str.astype(object).sum(
                 axis=1
             )  # We concatenate by row the modalities
-            self.Classifier.fit(
-                X_positifs, X_positifs_categorical_str
-            )  # learn on continuous features in order to predict categorical features combinasion concatenated
-        elif (
-            len(self.categorical_features) == 1
-        ):  # ravel in case of one categorical freatures
+
+            # learn on continuous features in order to predict
+            # categorical features combinasion concatenated
+            self.Classifier.fit(X_positifs, X_positifs_categorical_str)
+        elif len(self.categorical_features) == 1:  # ravel in case of one categorical freatures
             self.Classifier.fit(
                 X_positifs, X_positifs_categorical.ravel().astype(str)
             )  # learn on continuous features in order to predict categorical features
@@ -318,9 +380,7 @@ class MGSGRFOverSampler(BaseOverSampler):
                 X_positifs, X_positifs_categorical.astype(str)
             )  # learn on continuous features in order to predict categorical features
 
-        if (
-            self.bool_drf
-        ):  # special case of prediction for DRF (from the original article)
+        if self.bool_drf:  # special case of prediction for DRF (from the original article)
             out = self.Classifier.predict(newdata=new_samples, functional="weights")
             sample = np.zeros((new_samples.shape[0], out.y.shape[1]))
             for i in range(new_samples.shape[0]):
@@ -333,9 +393,7 @@ class MGSGRFOverSampler(BaseOverSampler):
 
         elif self.bool_rf_str:
             if self.to_encode_onehot:
-                raise ValueError(
-                    "Cannot apply bool_rf_str=True with to_encode_onehot=True"
-                )
+                raise ValueError("Cannot apply bool_rf_str=True with to_encode_onehot=True")
             new_samples_cat = self.Classifier.predict(new_samples)
             new_samples_cat = np.char.split(
                 new_samples_cat.astype(str), sep=","
@@ -377,18 +435,14 @@ class MGSGRFOverSampler(BaseOverSampler):
             for i in range(len(categories_onehot)):
                 curr_n_modalities = len(categories_onehot[i])
                 indices_argmax = np.argmax(
-                    new_samples_cat_pred_probas[
-                        :, start_idx : (start_idx + curr_n_modalities)
-                    ],
+                    new_samples_cat_pred_probas[:, start_idx : (start_idx + curr_n_modalities)],
                     axis=1,
                 )
                 indices_argmax = start_idx + indices_argmax
                 new_samples_cat[np.arange(len(new_samples_cat)), indices_argmax] = 1
                 start_idx = curr_n_modalities
 
-        elif (
-            len(self.categorical_features) == 1
-        ):  # Ravel in case of one categorical freatures
+        elif len(self.categorical_features) == 1:  # Ravel in case of one categorical freatures
             new_samples_cat = self.Classifier.predict(new_samples).reshape(-1, 1)
 
         else:
@@ -397,16 +451,36 @@ class MGSGRFOverSampler(BaseOverSampler):
         if self.to_encode:
             enc = ord_encoder
             return new_samples_cat, enc
-        elif self.to_encode_onehot:
+        if self.to_encode_onehot:
             enc = onehot_encoder
             return new_samples_cat, enc
-        else:
-            return new_samples_cat
+        return new_samples_cat
 
-    def _fit_resample(self, X, y=None, to_return_classifier=False, n_final_sample=None):
+    def _fit_resample(self, X, y=None, to_return_classifier=False):
         """
-        if y=None, all points are considered positive, and oversampling on all X
-        if n_final_sample=None, objective is balanced data.
+        Resample the dataset.
+
+        Parameters
+        ----------
+        X : array-like, shape (n_samples, n_features)
+            Matrix containing the data which have to be sampled.
+        y : array-like, shape (n_samples,)
+            Corresponding label for each sample in X.
+            if y=None, all points are considered positive, and oversampling on all X
+        to_return_classifier : bool, default=False
+            If True, return the classifier used for categorical features.
+
+        Returns
+        -------
+        X_resampled : array-like, shape (n_samples, n_features)
+            The resampled data.
+        y_resampled : array-like, shape (n_samples,)
+            The corresponding labels for the resampled data.
+        classifier : object, optional
+            The classifier used for categorical features, if to_return_classifier is True.
+        enc : object, optional
+            The encoder used for categorical features,
+            if to_return_classifier is True and to_encode is True.
         """
         if len(self.categorical_features) == X.shape[1]:
             raise ValueError(
@@ -456,7 +530,5 @@ class MGSGRFOverSampler(BaseOverSampler):
         if to_return_classifier:
             if self.to_encode_onehot:
                 return oversampled_X, oversampled_y, self.Classifier, enc
-            else:
-                return oversampled_X, oversampled_y, self.Classifier
-        else:
-            return oversampled_X, oversampled_y
+            return oversampled_X, oversampled_y, self.Classifier
+        return oversampled_X, oversampled_y

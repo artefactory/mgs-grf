@@ -1,16 +1,15 @@
 import math
-
-import numpy as np
-
-from imblearn.over_sampling.base import BaseOverSampler
-from sklearn.neighbors import NearestNeighbors
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.covariance import ledoit_wolf, oas, empirical_covariance
-from imblearn.utils import check_target_type
 from collections import namedtuple  ## KNN
 
+import numpy as np
+from imblearn.over_sampling.base import BaseOverSampler
+from imblearn.utils import check_target_type
+from sklearn.covariance import empirical_covariance, ledoit_wolf, oas
+from sklearn.neighbors import NearestNeighbors
+from sklearn.preprocessing import OneHotEncoder
 
-class NoSampling(object):
+
+class NoSampling:
     """
     None rebalancing strategy class
     """
@@ -135,9 +134,7 @@ class WMGS_NC_cov(BaseOverSampler):
         if y is None:
             X_positifs = X
             X_negatifs = np.ones((0, X.shape[1]))
-            assert (
-                n_final_sample is not None
-            ), "You need to provide a number of final samples."
+            assert n_final_sample is not None, "You need to provide a number of final samples."
         else:
             X_positifs = X[y == 1]
             X_negatifs = X[y == 0]
@@ -165,17 +162,14 @@ class WMGS_NC_cov(BaseOverSampler):
 
         enc = OneHotEncoder(handle_unknown="ignore")  ## encoding
         X_positifs_categorical_enc = enc.fit_transform(X_positifs_categorical).toarray()
-        X_positifs_all_features_enc = np.hstack(
-            (X_positifs, X_positifs_categorical_enc)
-        )
+        X_positifs_all_features_enc = np.hstack((X_positifs, X_positifs_categorical_enc))
         cste_med = np.median(
             np.sqrt(np.var(X_positifs, axis=0))
         )  ## med constante from continuous variables
         if not math.isclose(cste_med, 0):
-            X_positifs_all_features_enc[:, dimension_continuous:] = (
-                X_positifs_all_features_enc[:, dimension_continuous:]
-                * (cste_med / np.sqrt(2))
-            )
+            X_positifs_all_features_enc[:, dimension_continuous:] = X_positifs_all_features_enc[
+                :, dimension_continuous:
+            ] * (cste_med / np.sqrt(2))
             # With one-hot encoding, the median will be repeated twice. We need
         # to divide by sqrt(2) such that we only have one median value
         # contributing to the Euclidean distance
@@ -201,9 +195,7 @@ class WMGS_NC_cov(BaseOverSampler):
             centered_X = X_positifs[neighbor_by_index.flatten()] - np.repeat(
                 mus, self.K + 1, axis=0
             )
-            centered_X = centered_X.reshape(
-                len(X_positifs), self.K + 1, dimension_continuous
-            )
+            centered_X = centered_X.reshape(len(X_positifs), self.K + 1, dimension_continuous)
             if self.kind_cov == "InvWeightCov":
                 distances = (centered_X**2).sum(axis=-1)
                 distances[distances > 1e-10] = distances[distances > 1e-10] ** -0.25
@@ -211,43 +203,30 @@ class WMGS_NC_cov(BaseOverSampler):
                 # inv sqrt for positives only and half of power for multiplication below
                 distances /= distances.sum(axis=-1)[:, np.newaxis]
                 centered_X = (
-                    np.repeat(
-                        distances[:, :, np.newaxis] ** 0.5, dimension_continuous, axis=2
-                    )
+                    np.repeat(distances[:, :, np.newaxis] ** 0.5, dimension_continuous, axis=2)
                     * centered_X
                 )
 
             covs = (
-                self.llambda
-                * np.matmul(np.swapaxes(centered_X, 1, 2), centered_X)
-                / (self.K + 1)
+                self.llambda * np.matmul(np.swapaxes(centered_X, 1, 2), centered_X) / (self.K + 1)
             )
             if self.kind_sampling == "svd":
                 # spectral decomposition of all covariances
                 eigen_values, eigen_vectors = np.linalg.eigh(covs)  ## long
-                eigen_values[eigen_values > 1e-10] = (
-                    eigen_values[eigen_values > 1e-10] ** 0.5
-                )
-                As = [
-                    eigen_vectors[i].dot(eigen_values[i])
-                    for i in range(len(eigen_values))
-                ]
+                eigen_values[eigen_values > 1e-10] = eigen_values[eigen_values > 1e-10] ** 0.5
+                As = [eigen_vectors[i].dot(eigen_values[i]) for i in range(len(eigen_values))]
             elif self.kind_sampling == "cholesky":
-                As = np.linalg.cholesky(
-                    covs + 1e-10 * np.identity(dimension_continuous)
-                )
+                As = np.linalg.cholesky(covs + 1e-10 * np.identity(dimension_continuous))
             else:
                 raise ValueError(
-                    "kind_sampling of MGS not supported"
-                    "Available values : 'cholescky','svd' "
+                    "kind_sampling of MGS not supportedAvailable values : 'cholescky','svd' "
                 )
 
         elif self.kind_cov == "LWCov":
             As = []
             for i in range(n_minoritaire):
                 covariance, shrinkage = ledoit_wolf(
-                    X_positifs[neighbor_by_index[i, 1:], :]
-                    - mus[neighbor_by_index[i, 0]],
+                    X_positifs[neighbor_by_index[i, 1:], :] - mus[neighbor_by_index[i, 0]],
                     assume_centered=True,
                 )
                 As.append(self.llambda * covariance)
@@ -257,8 +236,7 @@ class WMGS_NC_cov(BaseOverSampler):
             As = []
             for i in range(n_minoritaire):
                 covariance, shrinkage = oas(
-                    X_positifs[neighbor_by_index[i, 1:], :]
-                    - mus[neighbor_by_index[i, 0]],
+                    X_positifs[neighbor_by_index[i, 1:], :] - mus[neighbor_by_index[i, 0]],
                     assume_centered=True,
                 )
                 As.append(self.llambda * covariance)
@@ -268,8 +246,7 @@ class WMGS_NC_cov(BaseOverSampler):
             p = X_positifs.shape[1]
             for i in range(n_minoritaire):
                 covariance = empirical_covariance(
-                    X_positifs[neighbor_by_index[i, 1:], :]
-                    - mus[neighbor_by_index[i, 0]],
+                    X_positifs[neighbor_by_index[i, 1:], :] - mus[neighbor_by_index[i, 0]],
                     assume_centered=True,
                 )
                 final_covariance = (np.trace(covariance) / p) * np.eye(p)
@@ -286,10 +263,7 @@ class WMGS_NC_cov(BaseOverSampler):
             As = []
             p = X_positifs.shape[1]
             for i in range(n_minoritaire):
-                diffs = (
-                    X_positifs[neighbor_by_index[i, 1:], :]
-                    - mus[neighbor_by_index[i, 0]]
-                )
+                diffs = X_positifs[neighbor_by_index[i, 1:], :] - mus[neighbor_by_index[i, 0]]
                 exp_dist = np.exp(-np.linalg.norm(diffs, axis=1))
                 weights = exp_dist / (np.sum(exp_dist))
                 final_covariance = (diffs.T.dot(np.diag(weights)).dot(diffs)) + np.eye(
@@ -320,9 +294,7 @@ class WMGS_NC_cov(BaseOverSampler):
             indices_neigh = np.arange(1, self.K + 1, 1)
             indice_neighbors = neighbor_by_index[central_point][indices_neigh]
 
-            if (
-                self.version == 1
-            ):  ## the most common occurence is chosen per categorical feature
+            if self.version == 1:  ## the most common occurence is chosen per categorical feature
                 for cat_feature in range(len(self.categorical_features)):
                     most_common, _ = mode_rand(
                         X_positifs_categorical[indice_neighbors, cat_feature].ravel(),
@@ -348,9 +320,7 @@ class WMGS_NC_cov(BaseOverSampler):
                 #### We take the nn of the central point. The latter is excluded
                 print("Version 3")
                 epsilon_weigths_sampling = 10e-6
-                indice_neighbors_without_0 = np.arange(
-                    start=1, stop=self.K + 1, dtype=int
-                )
+                indice_neighbors_without_0 = np.arange(start=1, stop=self.K + 1, dtype=int)
                 for cat_feature in range(len(self.categorical_features)):
                     new_samples_cat[i, cat_feature] = np.random.choice(
                         X_positifs_categorical[indice_neighbors_without_0, cat_feature],
@@ -359,27 +329,21 @@ class WMGS_NC_cov(BaseOverSampler):
                             (
                                 1
                                 / (
-                                    neighbor_by_dist[central_point][
-                                        indice_neighbors_without_0
-                                    ]
+                                    neighbor_by_dist[central_point][indice_neighbors_without_0]
                                     + epsilon_weigths_sampling
                                 )
                             )
                             / (
                                 1
                                 / (
-                                    neighbor_by_dist[central_point][
-                                        indice_neighbors_without_0
-                                    ]
+                                    neighbor_by_dist[central_point][indice_neighbors_without_0]
                                     + epsilon_weigths_sampling
                                 )
                             ).sum()
                         ),
                     )
             else:
-                raise ValueError(
-                    "Selected version not allowed " "Please chose an existing version"
-                )
+                raise ValueError("Selected version not allowed Please chose an existing version")
 
         ##### END ######
         new_samples_final = np.zeros(
@@ -403,9 +367,7 @@ class WMGS_NC_cov(BaseOverSampler):
         oversampled_X = np.concatenate(
             (X_negatifs_final, X_positifs_final, new_samples_final), axis=0
         )
-        oversampled_y = np.hstack(
-            (np.full(len(X_negatifs), 0), np.full((n_final_sample,), 1))
-        )
+        oversampled_y = np.hstack((np.full(len(X_negatifs), 0), np.full((n_final_sample,), 1)))
         np.random.seed()
 
         return oversampled_X, oversampled_y

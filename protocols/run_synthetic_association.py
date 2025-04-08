@@ -3,25 +3,23 @@ import sys
 
 sys.path.insert(1, os.path.abspath(os.path.join(os.getcwd(), os.pardir)))
 from pathlib import Path
-import numpy as np
 
-from sklearn.model_selection import StratifiedShuffleSplit
-from imblearn.over_sampling import RandomOverSampler
-from imblearn.over_sampling import SMOTENC
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import FunctionTransformer
 import lightgbm as lgb
+import numpy as np
+from imblearn.over_sampling import SMOTENC, RandomOverSampler
+from sklearn.compose import ColumnTransformer
+from sklearn.model_selection import StratifiedShuffleSplit
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import FunctionTransformer, OneHotEncoder
 
+from data.simulated_data import generate_initial_data_onecat
+from mgs_grf.forest_for_categorical import DrfSk
+from mgs_grf.over_sampling import MGSGRFOverSampler
 from protocols.baselines import (
     NoSampling,
     WMGS_NC_cov,
 )
-from mgs_grf.over_sampling import MGSGRFOverSampler
-from mgs_grf.forest_for_categorical import DrfSk
-from data.simulated_data import generate_initial_data_onecat
 from validation.classif_experiments import run_eval
 
 ##################################################
@@ -43,8 +41,7 @@ for dimension in dimensions:
     )
 
     output_dir_path_subsampled = (
-        "../saved_experiments_categorial_features/sim_asso/2025/normal/dimension_"
-        + str(dimension)
+        "../saved_experiments_categorial_features/sim_asso/2025/normal/dimension_" + str(dimension)
     )  # drfsk-extra-max_f-1
     Path(output_dir_path_subsampled).mkdir(parents=True, exist_ok=True)
     init_name_file_subsampled = "2024-10-01-synthetic_"
@@ -77,9 +74,7 @@ for dimension in dimensions:
         )
 
         model = Pipeline(steps=[("preprocessor", preprocessor), ("rf", clf)])
-        balanced_model = Pipeline(
-            steps=[("preprocessor", preprocessor), ("rf", balanced_clf)]
-        )
+        balanced_model = Pipeline(steps=[("preprocessor", preprocessor), ("rf", balanced_clf)])
 
     else:
         model = clf
@@ -216,9 +211,7 @@ for dimension in dimensions:
             ),
         ]
 
-        splitter_stratified = StratifiedShuffleSplit(
-            n_splits=1, test_size=0.2, random_state=i
-        )
+        splitter_stratified = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=i)
         name_file = init_name_file_subsampled + str(i) + ".npy"
         run_eval(
             output_dir=output_dir_path_subsampled,
