@@ -169,10 +169,10 @@ class MGS(BaseOverSampler):
                 np.random.choice(a=range(1, self.K + 1), size=self.n_points)
             )  # The nearrest neighbor selected for the estimation
             indice_neighbors = neighbor_by_index[indice][indices_neigh]
-            mu = (1 / self.K + 1) * X_positifs[indice_neighbors, :].sum(axis=0)
+            mu = (1 / (self.K + 1)) * X_positifs[indice_neighbors, :].sum(axis=0)
             sigma = (
                 self.llambda
-                * (1 / self.K + 1)
+                * (1 / (self.K + 1))
                 * (X_positifs[indice_neighbors, :] - mu).T.dot(X_positifs[indice_neighbors, :] - mu)
             )
 
