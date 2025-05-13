@@ -71,23 +71,24 @@ class DrfFitPredictMixin:
 
 
 class DrfSk(DrfFitPredictMixin, RandomForestClassifier):
-    """Blabla"""
+    """Distributional RandomForestClassifier"""
 
 
 class DrfSkRegressor(DrfFitPredictMixin, RandomForestRegressor):
-    """Blabla"""
+    """Distributional RandomForestRegressor"""
 
 
 class DrfSkExtraClassifier(DrfFitPredictMixin, ExtraTreesClassifier):
-    """Blabla"""
+    """Distributional ExtraTreesClassifier"""
 
 
 class DrfSkExtraRegressor(DrfFitPredictMixin, ExtraTreesRegressor):
-    """Blabla"""
+    """Distributional ExtraTreesRegressor"""
+
+
 
 
 ModeResult = namedtuple("ModeResult", ("mode", "count"))
-
 
 def mode_rand(a, axis):
     """_summary_.
