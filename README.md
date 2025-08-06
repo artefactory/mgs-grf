@@ -7,7 +7,7 @@ Abdoulaye SAKHO<sup>1, 2</sup>, Emmanuel MALHERBE<sup>1</sup>, Carl-Erik GAUTHIE
  <sup>1</sup> <sub> [Artefact Research Center](https://www.artefact.com/technologies/artefact-research-center/), </sub> <br> <sup>2</sup> <sub>[*LPSM* - Sorbonne Université](https://www.lpsm.paris/),</sub> <sup>3</sup> <sub>Société Générale</sub>
 
 In [ECML-PKDD 2025](https://ecmlpkdd.org/2025/). <br>
-[[Full Paper]](https://arxiv.org/pdf/2503.22730) <br>
+[[Full Paper]](https://ecmlpkdd-storage.s3.eu-central-1.amazonaws.com/preprints/2025/ads/preprint_ecml_pkdd_2025_ads_1005.pdf) <br>
 
 </div>
 
