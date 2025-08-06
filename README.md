@@ -46,7 +46,7 @@ clf_mgs.fit(balanced_X_final, balanced_y)
 A more detailed notebook example is available in [this notebook](example/example.ipynb).
 
 
-## ⭐ Reproducing the paper experiments
+## 🔬 Reproducing the paper experiments
 
 If you want to reproduce our paper experiments:
   - Section 4.2 : the [Python file](protocols/run_synthetic_coherence.py) reproduces the experiments (data sets, oversampling and traing). Then the results can be analyzed with [this notebook](protocols/notebooks/res_coh.ipynb).
