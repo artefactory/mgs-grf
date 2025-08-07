@@ -1,3 +1,8 @@
+"""
+
+Rebalancing strategies for continuous input.
+
+"""
 import numpy as np
 from imblearn.over_sampling import SMOTE
 from imblearn.over_sampling.base import BaseOverSampler
@@ -7,7 +12,8 @@ from sklearn.neighbors import NearestNeighbors
 
 class CVSmoteModel:
     """
-    CVSmoteModel. It's an estimator and not a oversampling strategy only like the others class in this file.
+    CVSmoteModel.
+    It's an estimator and not a oversampling strategy like the others class in this file.
     """
 
     def __init__(self, splitter, model, list_k_max=100, list_k_step=10):
