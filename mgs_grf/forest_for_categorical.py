@@ -1,4 +1,8 @@
-"""Generlized Random Forest for categorical variables."""
+"""
+
+Generlized Random Forest implementation based on scikit-learn, for categorical variables.
+
+"""
 from collections import namedtuple
 
 import numpy as np
@@ -19,7 +23,7 @@ from sklearn.utils.validation import _num_samples, check_is_fitted
 
 def iterative_random_choice(probas):
     """
-    Function for applying a np.random.choice several times with succesive values of probas
+    Function for applying a np.random.choice several times with succesive values of probas.
     
     Parameters
         ----------
@@ -38,6 +42,21 @@ class DrfFitPredictMixin:
     """
 
     def fit(self, X, y, sample_weight=None):
+        """
+        Fit the model to the training data.
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Training data.
+        y : array-like of shape (n_samples,) or (n_samples, n_outputs)
+            Target values (class labels in classification, real numbers in regression).
+        sample_weight : array-like of shape (n_samples,), default=None
+            Sample weights. If None, then samples are equally weighted.
+        Returns
+        -------
+        self : object
+            Fitted estimator.
+        """
         super().fit(X=X, y=y, sample_weight=sample_weight)
         self.train_y = y
         self.train_samples_leaves = (
@@ -45,6 +64,20 @@ class DrfFitPredictMixin:
         )  # train_samples_leaves: size n_train x n_trees
 
     def get_weights(self, X):
+        """        
+        Derive frequency of training samples ending in the same leaf as the new sample X.
+        (see GRF algorithm for details)
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            New samples for which to compute the weights.
+        Returns
+        -------
+        np.ndarray of shape (n_samples, n_train)
+            Weights for each sample in X based on the training samples leaves.
+            Each element is the frequency of the training sample's leaf in the new sample.
+        """
         leafs_by_sample = super().apply(X).astype(np.int32)  # taille n_samples x n_trees
         leaves_match = np.array(
             [leafs_by_sample[i] == self.train_samples_leaves for i in range(len(X))]
@@ -58,7 +91,20 @@ class DrfFitPredictMixin:
     def predict(self, X, batch_size=None):
         """
         Preditc procedure of GRF.
-        batch_size : int
+        It draws a sample based on the frequency of training samples ending in the same leaf as the new sample.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            New samples for which to predict the target values.
+        batch_size : int, optional
+            Size of the batch to process at once. If None, the entire dataset is processed at once.
+        Returns
+        -------
+        np.ndarray of shape (n_samples,) or (n_samples, n_outputs)
+            Predicted target values for each sample in X.
+            If the model is a classifier, the output will be class labels.
+            If the model is a regressor, the output will be real numbers.
         """
         if batch_size is None:
             weights = self.get_weights(X)
@@ -91,19 +137,22 @@ class DrfSkExtraRegressor(DrfFitPredictMixin, ExtraTreesRegressor):
 ModeResult = namedtuple("ModeResult", ("mode", "count"))
 
 def mode_rand(a, axis):
-    """_summary_.
-
-    Parameters
+    """
+    Compute the mode of an array along a specified axis, randomly choosing
+    among the modes in case of ties.
+    Parameters  
     ----------
-    a : _type_
-        _description_
-    axis : _type_
-        _description_
-
+    a : array_like
+        Input array.
+    axis : int
+        Axis along which to compute the mode. If None, the mode is computed over the flattened array.
     Returns
     -------
-    _type_
-        _description_
+    ModeResult
+        A named tuple containing:
+            - mode: The mode of the array along the specified axis.
+            - count: The count of the mode.
+
     """
     in_dims = list(range(a.ndim))
     a_view = np.transpose(a, in_dims[:axis] + in_dims[axis + 1 :] + [axis])
@@ -123,7 +172,11 @@ def mode_rand(a, axis):
 
 
 class KNNTies(KNeighborsClassifier):
-    """KNN with ties."""
+    """
+    KNN with ties.
+    This class extends the KNeighborsClassifier from scikit-learn. 
+    The main and only modification is to select randomly a sample when ties are encountered.
+    """
     _parameter_constraints: dict = {**NeighborsBase._parameter_constraints}
     _parameter_constraints.pop("radius")
     _parameter_constraints.update(
@@ -142,26 +195,16 @@ class KNNTies(KNeighborsClassifier):
         metric_params=None,
         n_jobs=None,
     ):
-        """_summary_.
-
+        """
+        Initialize the KNN with ties.
         Parameters
         ----------
-        n_neighbors : int, optional
-            _description_, by default 5
-        weights : str, optional
-            _description_, by default "uniform"
-        algorithm : str, optional
-            _description_, by default "auto"
-        leaf_size : int, optional
-            _description_, by default 30
-        p : int, optional
-            _description_, by default 2
-        metric : str, optional
-            _description_, by default "minkowski"
-        metric_params : _type_, optional
-            _description_, by default None
-        n_jobs : _type_, optional
-            _description_, by default None
+        n_neighbors : int, default=5
+            Number of neighbors to use by default for kneighbors queries.
+        weights : {'uniform', 'distance'} or callable, default='uniform'
+            Weight function used in prediction. Possible values:
+            - 'uniform': uniform weights. All points in each neighborhood are weighted equally.
+        
         """
         super().__init__(
             n_neighbors,
@@ -175,21 +218,26 @@ class KNNTies(KNeighborsClassifier):
         )
 
     def kneighbors(self, X=None, n_neighbors=None, return_distance=True):
-        """_summary_.
-
+        """
+        Find the K-neighbors of a point.
         Parameters
-        ----------
-        X : _type_, optional
-            _description_, by default None
-        n_neighbors : _type_, optional
-            _description_, by default None
-        return_distance : bool, optional
-            _description_, by default True
-
+        ----------  
+        X : {array-like, sparse matrix} of shape (n_queries, n_features), \
+                or (n_queries, n_indexed) if metric == 'precomputed'
+            Query points.
+        n_neighbors : int, default=None
+            Number of neighbors to return for each point. If None, defaults to `n_neighbors` set during initialization.
+        return_distance : bool, default=True
+            Whether to return distances or not. If True, distances are returned along with indices.
         Returns
         -------
-        _type_
-            _description_
+        neigh_dist : ndarray of shape (n_queries, n_neighbors), optional
+            Array of distances to the nearest neighbors for each query point.
+            Only returned if `return_distance` is True.
+        neigh_ind : ndarray of shape (n_queries, n_neighbors)
+            Array of indices of the nearest neighbors in the training set.
+            If `return_distance` is False, only indices are returned.
+        
         """
         if n_neighbors is None:
             n_neighbors = self.n_neighbors + 1
@@ -261,7 +309,7 @@ class KNNTies(KNeighborsClassifier):
         y_pred = np.empty((n_queries, n_outputs), dtype=classes_[0].dtype)
         for k, classes_k in enumerate(classes_):
             if weights is None:
-                mode, _ = mode_rand(_y[neigh_ind, k], axis=1)  ## Here modification
+                mode, _ = mode_rand(_y[neigh_ind, k], axis=1)  ### Here modification ##############
             else:
                 mode, _ = weighted_mode(_y[neigh_ind, k], weights, axis=1)
 
