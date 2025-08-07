@@ -1,6 +1,6 @@
 """
 
-Over-sampling module for MGS-GRF startegy.
+Over-sampling module for MGS-GRF strategy.
 
 """
 import math
@@ -35,6 +35,7 @@ class MGSGRFOverSampler(BaseOverSampler):
         fit_nn_on_continuous_only=True,
     ):
         """
+        Initializes the MGSGRFOverSampler.
 
         Parameters
         ----------
@@ -100,6 +101,8 @@ class MGSGRFOverSampler(BaseOverSampler):
         """Check if the estimator instance is valid and has categorical features.
         Raises
         ------
+        ValueError
+            If no categorical features are provided.
         """
         super()._validate_estimator()
         if self.categorical_features_.size == 0:
@@ -109,36 +112,37 @@ class MGSGRFOverSampler(BaseOverSampler):
             )
 
     def array_of_lists_to_array(self, arr):
-        """Change an array of list to a numpy array
+        """Convert an array of lists to a single NumPy array.
+
         Parameters
         ----------
-        arr : list
-            array_of_lists
+        arr : array-like
+            Input array of lists.
+
         Returns
         -------
-        numpy array
-
+        np.ndarray
+            The converted NumPy array.
         """
         return np.apply_along_axis(lambda a: np.array(a[0]), -1, arr[..., None])
 
     def _fit_resample_continuous(self, n_synthetic_sample, X_positifs, X_positifs_categorical=None):
-        """
-        Generate the synthetic continuous features. 
+        """Generate the synthetic continuous features. 
         The categorical features are only used for the distance derivation if needed.
 
         Parameters
         ----------
-        n_synthetic_sample :int
+        n_synthetic_sample : int
             The number of synthetic samples to generate.
-        X_positifs :   np.array like
-            The positive continuous orignal samples.
-        X_positifs_categorical :  np.array like, optional
+        X_positifs : np.ndarray
+            The positive continuous original samples.
+        X_positifs_categorical : np.ndarray, optional
             The positive categorical original samples, by default None
 
         Returns
         -------
-        np.array like
-            New synthetic samples, continuous featuures only.
+        np.ndarray
+            New synthetic samples, continuous features only.
         """
         X_positifs = X_positifs.astype(float)
         n_minoritaire = X_positifs.shape[0]
@@ -291,16 +295,16 @@ class MGSGRFOverSampler(BaseOverSampler):
 
         Parameters
         ----------
-        new_samples : np.array like
+        new_samples : np.ndarray
             The continuous features of the new samples.
-        X_positifs : np.array like
+        X_positifs : np.ndarray
             The positive continuous original samples.
-        X_positifs_categorical : np.array like
+        X_positifs_categorical : np.ndarray
             The positive categorical original samples.
 
         Returns
         -------
-        np.array like
+        np.ndarray
             New synthetic samples, categorical features only.
 
         """
