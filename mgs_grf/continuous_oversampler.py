@@ -12,8 +12,11 @@ from sklearn.neighbors import NearestNeighbors
 
 class CVSmoteModel:
     """
-    CVSmoteModel.
-    It's an estimator and not a oversampling strategy like the others class in this file.
+    A cross-validation wrapper for SMOTE to find the optimal k-neighbors.
+
+    This class acts as an estimator. It uses cross-validation to find the best
+    `k_neighbors` for SMOTE oversampling, then trains the provided model on the
+    resampled data.
     """
 
     def __init__(self, splitter, model, list_k_max=100, list_k_step=10):

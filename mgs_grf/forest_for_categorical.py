@@ -90,7 +90,7 @@ class DrfFitPredictMixin:
 
     def predict(self, X, batch_size=None):
         """
-        Preditc procedure of GRF.
+        Predict procedure of GRF.
         It draws a sample based on the frequency of training samples ending in the same leaf as the new sample.
 
         Parameters
