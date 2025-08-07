@@ -1,6 +1,6 @@
 """
 
-Generlized Random Forest implementation based on scikit-learn, for categorical variables.
+Generalized Random Forest implementation based on scikit-learn, for categorical variables.
 
 """
 from collections import namedtuple
