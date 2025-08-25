@@ -13,7 +13,8 @@ from imblearn.utils import check_target_type
 from sklearn.covariance import empirical_covariance, ledoit_wolf, oas
 from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
-from .forest_for_categorical import DrfSk,KNNTies
+from .forest_for_categorical import DrfSk
+from .knn import KNNTies
 
 CLASSIFIERS = {
     "grf": DrfSk(random_state=0),
