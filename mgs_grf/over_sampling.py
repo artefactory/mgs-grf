@@ -363,6 +363,7 @@ class MGSGRFOverSampler(BaseOverSampler):
                 self.K = int(X.shape[1]) 
                 warnings.warn('MGSGRFOverSampler called with K=None. We set K to the number of continuous features: K='+str(self.K))
             else:
+                warnings.warn('MGSGRFOverSampler called with continuous features only.')
                 self.K = int(X.shape[1] - len(self.categorical_features)) 
                 warnings.warn('MGSGRFOverSampler called with K=None. We set K to the number of continuous features: K='+str(self.K))
 
@@ -376,20 +377,26 @@ class MGSGRFOverSampler(BaseOverSampler):
             X_positifs = X[y == class_sample]  ## current class
 
             continuous = np.ones((X_positifs.shape[1]), dtype=bool)
-            continuous[self.categorical_features] = False
+            if self.categorical_features is not None:
+                continuous[self.categorical_features] = False
 
             new_samples = self._fit_resample_continuous(
                 n_samples, X_positifs[:, continuous], X_positifs[:, ~continuous]
             )  # Generate continuous features
 
-            new_samples_cat = self._fit_resample_categorical(
-                new_samples, X_positifs[:, continuous], X_positifs[:, ~continuous]
-            )  # Generate categorical features
+            if self.categorical_features is not None:
+                new_samples_cat = self._fit_resample_categorical(
+                    new_samples, X_positifs[:, continuous], X_positifs[:, ~continuous]
+                )  # Generate categorical features
 
-            new_samples_final = np.zeros((n_samples, X_positifs.shape[1]), dtype=object)
-            new_samples_final[:, continuous] = new_samples
-            new_samples_final[:, ~continuous] = new_samples_cat
-            del new_samples, new_samples_cat
+            if self.categorical_features is not None:
+                new_samples_final = np.zeros((n_samples, X_positifs.shape[1]), dtype=object)
+                new_samples_final[:, continuous] = new_samples
+                new_samples_final[:, ~continuous] = new_samples_cat
+                del new_samples, new_samples_cat
+            else:
+                new_samples_final = new_samples
+                del new_samples
 
             ## Add the generated samples of the class to the final array
             oversampled_X = np.concatenate((oversampled_X, new_samples_final), axis=0)
