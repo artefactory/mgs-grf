@@ -1,7 +1,7 @@
 import os
 import sys
 
-sys.path.insert(1, os.path.abspath(os.path.join(os.getcwd(), os.pardir)))
+sys.path.insert(1, os.path.abspath(Path(__file__).parents[2]))
 from pathlib import Path
 
 import lightgbm as lgb
@@ -13,16 +13,16 @@ from sklearn.model_selection import ShuffleSplit
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, OneHotEncoder
 
-from data.simulated_data import (
+from experiments.data.simulated_data import (
     generate_initial_data_twocat_normal_case2,
 )  ## Run for case2 !!
 from mgs_grf import DrfSk, KNNTies
 from mgs_grf import MGSGRFOverSampler
-from protocols.baselines import (
+from experiments.protocols.baselines import (
     NoSampling,
     WMGS_NC_cov,
 )
-from validation.classif_experiments import run_eval
+from experiments.validation.classif_experiments import run_eval
 
 
 def to_str(x):

@@ -1,7 +1,7 @@
 import os
 import sys
 
-sys.path.insert(1, os.path.abspath(os.path.join(os.getcwd(), os.pardir)))
+sys.path.insert(1, os.path.abspath(Path(__file__).parents[2]))
 from pathlib import Path
 
 import lightgbm as lgb
@@ -12,14 +12,14 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, OneHotEncoder
 
-from data.data import load_BankChurners_data
+from experiments.data.data import load_BankChurners_data
 from mgs_grf import DrfSk, KNNTies
 from mgs_grf import MGSGRFOverSampler
-from protocols.baselines import (
+from experiments.protocols.baselines import (
     NoSampling,
     WMGS_NC_cov,
 )
-from validation.classif_experiments import (
+from experiments.validation.classif_experiments import (
     read_subsampling_indices,
     run_eval,
     subsample_to_ratio_indices,
