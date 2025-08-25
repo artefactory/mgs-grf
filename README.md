@@ -1,20 +1,12 @@
 <div align="center">
 
-# Harnessing Mixed Features for Imbalance Data Oversampling: Application to Bank Customers Scoring
-
-
-Abdoulaye SAKHO<sup>1, 2</sup>, Emmanuel MALHERBE<sup>1</sup>, Carl-Erik GAUTHIER<sup>3</sup>, Erwan SCORNET<sup>2</sup> <br>
- <sup>1</sup> <sub> [Artefact Research Center](https://www.artefact.com/technologies/artefact-research-center/), </sub> <br> <sup>2</sup> <sub>[*LPSM* - Sorbonne Université](https://www.lpsm.paris/),</sub> <sup>3</sup> <sub>Société Générale</sub>
-
-In [ECML-PKDD 2025](https://ecmlpkdd.org/2025/). <br>
-[[Full Paper]](https://ecmlpkdd-storage.s3.eu-central-1.amazonaws.com/preprints/2025/ads/preprint_ecml_pkdd_2025_ads_1005.pdf) <br>
+# MGS-GRF
 
 </div>
 
+If you face *imbalance data* in your machine learning project, this package is here to pre-process your data. It is an efficient and ready-to-use implementation of
+MGS-GRF, an oversampling strategy presented at ECML-PKDD 2025 conference, designed to handle large-scale and mixed imbalanced data-set — with *both continuous and categorical features*.
 
-> **Abstract:** *This study investigates rare event detection on tabular data within binary classification. Many real-world classification tasks, such as in banking sector, deal with mixed features, which have a significant impact on predictive performances. To this purpose, we introduce MGS-GRF, an oversampling strategy designed for mixed features. This method uses a kernel density estimator with locally estimated full-rank covariances to generate continuous features, while categorical ones are drawn from the original samples through a generalized random forest.*
-
-You will find code to reproduce the paper experiments as well as an nice implementation of our *new* and *efficient* strategy for your projects.
 
 ## 🛠 Installation
 
