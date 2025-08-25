@@ -18,9 +18,9 @@ You will find code to reproduce the paper experiments.
 
 ## 🛠 Installation
 
-First you can clone the repository:
+Install the **required** packages into your environment (conda, mamba or pip):
 ```bash
-git clone git@github.com:artefactory/mgs-grf.git
+pip install -r requirements.txt
 ```
 
 ## 🔬 Reproducing the paper experiments
