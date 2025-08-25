@@ -16,7 +16,7 @@ git clone git@github.com:artefactory/mgs-grf.git
 ```
 
 And install the required packages into your environment (conda, mamba or pip):
-````bash
+```bash
 pip install -r requirements.txt
 ```
 
