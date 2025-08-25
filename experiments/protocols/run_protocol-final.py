@@ -13,7 +13,8 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, OneHotEncoder
 
 from experiments.data.data import load_BankChurners_data
-from mgs_grf import DrfSk, KNNTies
+from mgs_grf import DrfSk
+from mgs_grf.knn import KNNTies
 from mgs_grf import MGSGRFOverSampler
 from experiments.protocols.baselines import (
     NoSampling,
