@@ -5,6 +5,7 @@ Over-sampling module for MGS-GRF strategy.
 """
 
 import math
+import warnings
 
 import numpy as np
 from imblearn.over_sampling.base import BaseOverSampler
@@ -24,8 +25,8 @@ class MGSGRFOverSampler(BaseOverSampler):
 
     def __init__(
         self,
-        K,
-        categorical_features,
+        K=None,
+        categorical_features=None,
         Classifier=DrfSk(random_state=0),
         kind_sampling="cholesky",
         kind_cov="EmpCov",
@@ -354,9 +355,16 @@ class MGSGRFOverSampler(BaseOverSampler):
         """
         if len(self.categorical_features) == X.shape[1]:
             raise ValueError(
-                "MultiOutPutClassifier_and_MGS is not designed to work only with categorical "
+                "MGSGRFOverSampler is not designed to work only with categorical "
                 "features. It requires some numerical features."
             )
+        if self.K==None:
+            if self.categorical_features==None:
+                self.K = int(X.shape[1]) 
+                warnings.warn('MGSGRFOverSampler called with K=None. We set K to the number of continuous features: K='+str(self.K))
+            else:
+                self.K = int(X.shape[1] - len(self.categorical_features)) 
+                warnings.warn('MGSGRFOverSampler called with K=None. We set K to the number of continuous features: K='+str(self.K))
 
         np.random.seed(self.random_state)
 
