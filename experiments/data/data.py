@@ -6,7 +6,12 @@ import numpy as np
 import pandas as pd
 from scipy.io.arff import loadarff
 
-DATA_DIR = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir)), "data", "externals")
+from experiments.validation.classif_experiments import subsample_to_ratio_indices
+
+
+DATA_DIR = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir)), "experiments", "data", "externals")
+output_dir_path = "../saved_experiments_categorial_features/BankChurners_example"
+Path(output_dir_path).mkdir(parents=True, exist_ok=True)
 
 
 def load_BankChurners_data():
@@ -206,9 +211,6 @@ def load_covertype_data(
         return X.to_numpy(), original_y.to_numpy().ravel()
     
 
-output_dir_path = "../saved_experiments_categorial_features/BankChurners_example"
-Path(output_dir_path).mkdir(parents=True, exist_ok=True)
-from validation.classif_experiments import subsample_to_ratio_indices
 def load_BankChurners_data_():
     r"""
     Load BankChurners data set from data\dexternals folder AND subsample it to 1% imbalance ratio
