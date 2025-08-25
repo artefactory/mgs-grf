@@ -1,8 +1,9 @@
 import os
 import sys
-
-sys.path.insert(1, os.path.abspath(os.path.join(os.getcwd(), os.pardir)))
 from pathlib import Path
+sys.path.insert(1, os.path.abspath(Path(__file__).parents[2]))
+#print(Path(__file__).parents[2])
+
 
 import lightgbm as lgb
 import numpy as np
@@ -13,14 +14,14 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, OneHotEncoder
 
-from data.simulated_data import generate_initial_data_onecat
+from experiments.data.simulated_data import generate_initial_data_onecat
 from mgs_grf import DrfSk
 from mgs_grf import MGSGRFOverSampler
-from protocols.baselines import (
+from experiments.protocols.baselines.baselines import (
     NoSampling,
     WMGS_NC_cov,
 )
-from validation.classif_experiments import run_eval
+from experiments.validation.classif_experiments import run_eval
 
 ##################################################
 ##################################################
@@ -41,7 +42,7 @@ for dimension in dimensions:
     )
 
     output_dir_path_subsampled = (
-        "../saved_experiments_categorial_features/sim_asso/2025/normal/dimension_" + str(dimension)
+        "../saved_experiments_categorial_features_test/sim_asso/2025/normal/dimension_" + str(dimension)
     )  # drfsk-extra-max_f-1
     Path(output_dir_path_subsampled).mkdir(parents=True, exist_ok=True)
     init_name_file_subsampled = "2024-10-01-synthetic_"
@@ -198,12 +199,6 @@ for dimension in dimensions:
                     random_state=i,
                     kind_cov="EmpCov",
                     mucentered=True,
-                    to_encode=False,
-                    to_encode_onehot=False,
-                    bool_rf=False,
-                    bool_rf_str=False,
-                    bool_rf_regressor=False,
-                    bool_drf=False,
                     fit_nn_on_continuous_only=True,
                 ),
                 {},
