@@ -2,7 +2,6 @@ import os
 import time
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy import interpolate
@@ -540,8 +539,6 @@ def depth_func_linspace(min_value, max_value, size=10, add_border=False):
         border_array = [None]
     list_depth.extend(border_array)
     return list(dict.fromkeys(list_depth))
-
-
 
 
 def pr_auc_custom(y_true, y_score):
