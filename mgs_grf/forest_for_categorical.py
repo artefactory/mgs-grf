@@ -3,6 +3,7 @@
 Generalized Random Forest implementation based on scikit-learn, for categorical variables.
 
 """
+
 from collections import namedtuple
 
 import numpy as np
@@ -24,7 +25,7 @@ from sklearn.utils.validation import _num_samples, check_is_fitted
 def iterative_random_choice(probas):
     """
     Function for applying a np.random.choice several times with succesive values of probas.
-    
+
     Parameters
         ----------
         probas : np.array like
@@ -64,7 +65,7 @@ class DrfFitPredictMixin:
         )  # train_samples_leaves: size n_train x n_trees
 
     def get_weights(self, X):
-        """        
+        """
         Derive frequency of training samples ending in the same leaf as the new sample X.
         (see GRF algorithm for details)
 
@@ -132,15 +133,14 @@ class DrfSkExtraRegressor(DrfFitPredictMixin, ExtraTreesRegressor):
     """Distributional ExtraTreesRegressor"""
 
 
-
-
 ModeResult = namedtuple("ModeResult", ("mode", "count"))
+
 
 def mode_rand(a, axis):
     """
     Compute the mode of an array along a specified axis, randomly choosing
     among the modes in case of ties.
-    Parameters  
+    Parameters
     ----------
     a : array_like
         Input array.
@@ -174,9 +174,10 @@ def mode_rand(a, axis):
 class KNNTies(KNeighborsClassifier):
     """
     KNN with ties.
-    This class extends the KNeighborsClassifier from scikit-learn. 
+    This class extends the KNeighborsClassifier from scikit-learn.
     The main and only modification is to select randomly a sample when ties are encountered.
     """
+
     _parameter_constraints: dict = {**NeighborsBase._parameter_constraints}
     _parameter_constraints.pop("radius")
     _parameter_constraints.update(
@@ -204,7 +205,7 @@ class KNNTies(KNeighborsClassifier):
         weights : {'uniform', 'distance'} or callable, default='uniform'
             Weight function used in prediction. Possible values:
             - 'uniform': uniform weights. All points in each neighborhood are weighted equally.
-        
+
         """
         super().__init__(
             n_neighbors,
@@ -250,8 +251,8 @@ class KNNTies(KNeighborsClassifier):
             )
             return neigh_dist[:, 1:], neigh_ind[:, 1:]
         neigh_ind = super().kneighbors(
-                X=X, n_neighbors=n_neighbors, return_distance=return_distance
-            )
+            X=X, n_neighbors=n_neighbors, return_distance=return_distance
+        )
         return neigh_ind[:, 1:]
 
     def predict(self, X):

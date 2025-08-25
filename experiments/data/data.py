@@ -10,7 +10,9 @@ from experiments.validation.classif_experiments import subsample_to_ratio_indice
 from ucimlrepo import fetch_ucirepo
 
 
-DATA_DIR = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir)), "experiments", "data", "externals")
+DATA_DIR = os.path.join(
+    os.path.abspath(os.path.join(os.getcwd(), os.pardir)), "experiments", "data", "externals"
+)
 output_dir_path = "../saved_experiments_categorial_features/BankChurners_example"
 Path(output_dir_path).mkdir(parents=True, exist_ok=True)
 
@@ -21,9 +23,7 @@ def load_BankChurners_data():
     The name of the file shoulde be : BankChurners.csv
     """
     filename = "BankChurners.csv"
-    df_bankchurners = pd.read_csv(
-        os.path.join(DATA_DIR, filename)
-    )
+    df_bankchurners = pd.read_csv(os.path.join(DATA_DIR, filename))
 
     X_bankChurners = df_bankchurners.drop(
         [
@@ -58,7 +58,7 @@ def load_BankMarketing_data():
     X = X.to_numpy()
     y = y.to_numpy().ravel()
     return X, y
-    
+
 
 def load_BankChurners_data_():
     r"""
@@ -66,9 +66,7 @@ def load_BankChurners_data_():
     The name of the file shoulde be : BankChurners.csv
     """
     filename = "BankChurners.csv"
-    df_bankchurners = pd.read_csv(
-        os.path.join(DATA_DIR, filename)
-    )
+    df_bankchurners = pd.read_csv(os.path.join(DATA_DIR, filename))
 
     X_bankChurners = df_bankchurners.drop(
         [
@@ -87,6 +85,13 @@ def load_BankChurners_data_():
         .ravel()
         .astype(int)
     )
-    indices_kept_1 = subsample_to_ratio_indices(X=X_bankChurners,y=y_bankChurners,ratio=0.01,seed_sub=5,output_dir_subsampling=output_dir_path,name_subsampling_file='BankChurners_sub_original_to_1')
-    X, y = X_bankChurners[indices_kept_1],y_bankChurners[indices_kept_1]
+    indices_kept_1 = subsample_to_ratio_indices(
+        X=X_bankChurners,
+        y=y_bankChurners,
+        ratio=0.01,
+        seed_sub=5,
+        output_dir_subsampling=output_dir_path,
+        name_subsampling_file="BankChurners_sub_original_to_1",
+    )
+    X, y = X_bankChurners[indices_kept_1], y_bankChurners[indices_kept_1]
     return X, y

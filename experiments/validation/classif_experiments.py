@@ -479,7 +479,6 @@ class PaperTimeSeriesSplit(TimeSeriesSplit):
         return folds_from_starting_split
 
 
-
 class PaperTimeSeriesSplitWithGroupOut(TimeSeriesSplit):
     """
     MyTimeSeriesSplit with group out on col_name_id.

@@ -3,6 +3,7 @@
 Rebalancing strategies for continuous input.
 
 """
+
 import numpy as np
 from imblearn.over_sampling import SMOTE
 from imblearn.over_sampling.base import BaseOverSampler

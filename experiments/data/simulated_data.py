@@ -3,9 +3,10 @@ from collections import Counter
 import numpy as np
 from sklearn.preprocessing import OneHotEncoder
 
+
 def load_params_twocat_normal_case1():
     beta0 = np.array([0, 0, 0])
-    list_modalities=[
+    list_modalities = [
         "Aa",
         "Ab",
         "Ac",
@@ -88,7 +89,7 @@ def load_params_twocat_normal_case1():
         "Ih",
         "Ii",
     ]
-    list_beta=[
+    list_beta = [
         np.array([11, -5, -6]),
         np.array([10.7, -4.8, -6.1]),
         np.array([11.3, -5, -6.3]),
@@ -171,7 +172,7 @@ def load_params_twocat_normal_case1():
         beta0,
         beta0,
     ]
-    list_intercept=[
+    list_intercept = [
         2,
         2,
         2,
@@ -268,7 +269,8 @@ def load_params_twocat_normal_case1():
         -32,
         30.0,
     ]
-    return list_modalities, list_beta, list_intercept,beta_target
+    return list_modalities, list_beta, list_intercept, beta_target
+
 
 def my_log_reg(x, beta=np.array([-8, 7, 6]), intercept=-2):
     # beta = np.array([-8,7,6])
@@ -348,7 +350,11 @@ def generate_initial_data_twocat_normal_case1(n_samples, mean, cov, random_state
     ### Feature categorical
     list_modalities, list_beta, list_intercept, beta_target = load_params_twocat_normal_case1()
     z_feature_cat_uniform, z_feature_cat_uniform_numeric = generate_synthetic_features_multinomial(
-        X=Xf,index_informatives=[0, 1, 2],list_modalities=list_modalities,list_beta=list_beta,list_intercept=list_intercept,
+        X=Xf,
+        index_informatives=[0, 1, 2],
+        list_modalities=list_modalities,
+        list_beta=list_beta,
+        list_intercept=list_intercept,
     )
     enc = OneHotEncoder(handle_unknown="ignore", sparse_output=False)
     X_final_cat_enc = enc.fit_transform(z_feature_cat_uniform.reshape(-1, 1))

@@ -1,8 +1,9 @@
 import os
 import sys
 from pathlib import Path
+
 sys.path.insert(1, os.path.abspath(Path(__file__).parents[2]))
-#print(Path(__file__).parents[2])
+# print(Path(__file__).parents[2])
 
 
 import lightgbm as lgb
@@ -42,7 +43,8 @@ for dimension in dimensions:
     )
 
     output_dir_path_subsampled = (
-        "../saved_experiments_categorial_features_test/sim_asso/2025/normal/dimension_" + str(dimension)
+        "../saved_experiments_categorial_features_test/sim_asso/2025/normal/dimension_"
+        + str(dimension)
     )  # drfsk-extra-max_f-1
     Path(output_dir_path_subsampled).mkdir(parents=True, exist_ok=True)
     init_name_file_subsampled = "2024-10-01-synthetic_"
