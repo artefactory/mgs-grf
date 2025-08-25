@@ -22,12 +22,14 @@ def mode_rand(a, axis):
     """
     Compute the mode of an array along a specified axis, randomly choosing
     among the modes in case of ties.
+
     Parameters
     ----------
     a : array_like
         Input array.
     axis : int
         Axis along which to compute the mode. If None, the mode is computed over the flattened array.
+
     Returns
     -------
     ModeResult
@@ -80,6 +82,7 @@ class KNNTies(KNeighborsClassifier):
     ):
         """
         Initialize the KNN with ties.
+
         Parameters
         ----------
         n_neighbors : int, default=5
@@ -103,6 +106,7 @@ class KNNTies(KNeighborsClassifier):
     def kneighbors(self, X=None, n_neighbors=None, return_distance=True):
         """
         Find the K-neighbors of a point.
+
         Parameters
         ----------  
         X : {array-like, sparse matrix} of shape (n_queries, n_features), \
@@ -112,6 +116,7 @@ class KNNTies(KNeighborsClassifier):
             Number of neighbors to return for each point. If None, defaults to `n_neighbors` set during initialization.
         return_distance : bool, default=True
             Whether to return distances or not. If True, distances are returned along with indices.
+
         Returns
         -------
         neigh_dist : ndarray of shape (n_queries, n_neighbors), optional

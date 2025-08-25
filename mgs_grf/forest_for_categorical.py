@@ -16,7 +16,7 @@ def iterative_random_choice(probas):
     Function for applying a np.random.choice several times with succesive values of probas.
 
     Parameters
-        ----------
+    ----------
         probas : np.array like
             Probabilities of the samples.
     """
@@ -34,6 +34,7 @@ class DrfFitPredictMixin:
     def fit(self, X, y, sample_weight=None):
         """
         Fit the model to the training data.
+
         Parameters
         ----------
         X : array-like of shape (n_samples, n_features)
@@ -42,6 +43,7 @@ class DrfFitPredictMixin:
             Target values (class labels in classification, real numbers in regression).
         sample_weight : array-like of shape (n_samples,), default=None
             Sample weights. If None, then samples are equally weighted.
+
         Returns
         -------
         self : object
@@ -62,6 +64,7 @@ class DrfFitPredictMixin:
         ----------
         X : array-like of shape (n_samples, n_features)
             New samples for which to compute the weights.
+
         Returns
         -------
         np.ndarray of shape (n_samples, n_train)
@@ -89,6 +92,7 @@ class DrfFitPredictMixin:
             New samples for which to predict the target values.
         batch_size : int, optional
             Size of the batch to process at once. If None, the entire dataset is processed at once.
+
         Returns
         -------
         np.ndarray of shape (n_samples,) or (n_samples, n_outputs)

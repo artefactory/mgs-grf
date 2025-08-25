@@ -12,7 +12,8 @@ from imblearn.over_sampling.base import BaseOverSampler
 from imblearn.utils import check_target_type
 from sklearn.covariance import empirical_covariance, ledoit_wolf, oas
 from sklearn.neighbors import NearestNeighbors
-from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
+from sklearn.preprocessing import OneHotEncoder
+
 from .forest_for_categorical import DrfSk
 from .knn import KNNTies
 
@@ -109,6 +110,7 @@ class MGSGRFOverSampler(BaseOverSampler):
 
     def _validate_estimator(self):
         """Check if the estimator instance is valid and has categorical features.
+
         Raises
         ------
         ValueError
@@ -318,7 +320,6 @@ class MGSGRFOverSampler(BaseOverSampler):
             New synthetic samples, categorical features only.
 
         """
-
         self.clf = CLASSIFIERS[self.classifier]
         if len(self.categorical_features) == 1:  # ravel in case of one categorical freatures
             self.clf.fit(
