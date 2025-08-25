@@ -34,7 +34,7 @@ class MGSGRFOverSampler(BaseOverSampler):
         self,
         K=None,
         categorical_features=None,
-        classifier='drf',
+        classifier="drf",
         kind_sampling="cholesky",
         kind_cov="EmpCov",
         mucentered=True,
@@ -368,18 +368,23 @@ class MGSGRFOverSampler(BaseOverSampler):
                 raise ValueError(
                     "MGSGRFOverSampler is not designed to work only with categorical "
                     "features. It requires some numerical features."
-            )
+                )
         else:
-            warnings.warn('MGSGRFOverSampler called with continuous features only.')
-            
+            warnings.warn("MGSGRFOverSampler called with continuous features only.")
+
         if self.K is None:
             if self.categorical_features is None:
-                self.K = int(X.shape[1]) 
-                warnings.warn('MGSGRFOverSampler called with K=None. We set K to the number of continuous features: K='+str(self.K))
+                self.K = int(X.shape[1])
+                warnings.warn(
+                    "MGSGRFOverSampler called with K=None. We set K to the number of continuous features: K="
+                    + str(self.K)
+                )
             else:
-                self.K = int(X.shape[1] - len(self.categorical_features)) 
-                warnings.warn('MGSGRFOverSampler called with K=None. We set K to the number of continuous features: K='+str(self.K))
-        
+                self.K = int(X.shape[1] - len(self.categorical_features))
+                warnings.warn(
+                    "MGSGRFOverSampler called with K=None. We set K to the number of continuous features: K="
+                    + str(self.K)
+                )
 
         np.random.seed(self.random_state)
 

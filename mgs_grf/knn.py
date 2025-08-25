@@ -3,6 +3,7 @@
 Knn with random ties selection based on scikit-learn implementation.
 
 """
+
 from collections import namedtuple
 
 import numpy as np
