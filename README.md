@@ -22,17 +22,15 @@ from mgs_grf import MGSGRFOverSampler
 
 ## Apply MGS-GRF procedure to oversample the data
 mgs_grf = MGSGRFOverSampler(K=len(numeric_features),categorical_features=categorical_features,random_state=0)
-balanced_X, balanced_y = mgs_grf.fit_resample(X_train,y_train)
-print("Augmented data : ", Counter(balanced_y))
+balanced_X, balanced_y_train = mgs_grf.fit_resample(X_train,y_train)
 
-## Encode the categorical variables
+## Encode the categorical variables (if any)
 enc = OneHotEncoder(handle_unknown='ignore',sparse_output=False)
-balanced_X_encoded = enc.fit_transform(balanced_X[:,categorical_features])
-balanced_X_final = np.hstack((balanced_X[:,numeric_features],balanced_X_encoded))
+balanced_X_train = np.hstack((balanced_X[:,numeric_features], enc.fit_transform(balanced_X[:,categorical_features])))
 
 # Fit the final classifier on the augmented data
 clf_mgs = lgb.LGBMClassifier(n_estimators=100,verbosity=-1, random_state=0)
-clf_mgs.fit(balanced_X_final, balanced_y)
+clf_mgs.fit(balanced_X_train, balanced_y_train)
 
 ```
 A more detailed notebook example is available in [this notebook](example/example.ipynb).
