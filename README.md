@@ -5,7 +5,7 @@
 </div>
 
 If you face *imbalance data* in your machine learning project, this package is here to pre-process your data. It is an efficient and ready-to-use implementation of
-MGS-GRF, an oversampling strategy presented at ECML-PKDD 2025 conference, designed to handle large-scale and mixed imbalanced data-set — with *both continuous and categorical features*.
+MGS-GRF, an oversampling strategy presented at [ECML-PKDD 2025](https://ecmlpkdd.org/2025/) conference, designed to handle large-scale and mixed imbalanced data-set — with *both continuous and categorical features*.
 
 
 ## 🛠 Installation
