@@ -52,7 +52,7 @@ This work was done through a partenership between **Artefact Research Center** a
   &emsp;
   &emsp;
   <a href="https://www.lpsm.paris/">
-    <img src="data/logos//logo_LPSM.jpg" height="95" />
+    <img src="experiments/data/logos//logo_LPSM.jpg" height="95" />
   </a>
 </p>
 
