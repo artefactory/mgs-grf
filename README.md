@@ -15,6 +15,11 @@ First you can clone the repository:
 git clone git@github.com:artefactory/mgs-grf.git
 ```
 
+And install the required packages into your environment (conda, mamba or pip):
+````bash
+pip install -r requirements.txt
+```
+
 ## 🚀 How to use the MGS-GRF Algorithm to learn on imbalanced data
 Here is a short example on how to use MGS-GRF: 
 ```python
