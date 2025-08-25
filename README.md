@@ -41,21 +41,6 @@ clf_mgs.fit(balanced_X_train, balanced_y_train)
 A more detailed notebook example is available in [this notebook](example/example.ipynb).
 
 
-## 🔬 Reproducing the paper experiments
-
-If you want to reproduce our paper experiments:
-  - Section 4.2 : the [Python file](protocols/run_synthetic_coherence.py) reproduces the experiments (data sets, oversampling and traing). Then the results can be analyzed with [this notebook](protocols/notebooks/res_coh.ipynb).
-  - Section 4.3 : the   [Python file](protocols/run_synthetic_association.py) reproduces the experiments (data sets, oversampling and traing). Then the results can be analyzed with [this notebook](protocols/notebooks/res_asso.ipynb).
-  - Section 5 : the [Python file](protocols/run_protocol-final.py) reproduces the experiments (data sets, oversampling and traing). Then the results can be analyzed with [this notebook](protocols/notebooks/res_real_data.ipynb).
-
-## 💾 Data sets
-
-The data sets of used for our article should be dowloaded  inside the *data/externals* folder. The data sets are available at the followings adresses :
-
-* [BankMarketing](https://archive.ics.uci.edu/dataset/222/bank+marketing)
-* [BankChurners](https://www.kaggle.com/datasets/thedevastator/predicting-credit-card-customer-attrition-with-m)
-
-
 ## 🙏 Acknowledgements
 
 This work was done through a partenership between **Artefact Research Center** and the **Laboratoire de Probabilités Statistiques et Modélisation** (LPSM) of Sorbonne University.
