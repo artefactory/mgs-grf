@@ -1,29 +1,28 @@
 import os
 import sys
 
-sys.path.insert(1, os.path.abspath(os.path.join(os.getcwd(), os.pardir)))
+sys.path.insert(1, os.path.abspath(Path(__file__).parents[2]))
 from pathlib import Path
 
 import lightgbm as lgb
+import numpy as np
 from imblearn.over_sampling import SMOTENC, RandomOverSampler
 from imblearn.under_sampling import RandomUnderSampler
 from sklearn.compose import ColumnTransformer
-from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import ShuffleSplit
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, OneHotEncoder
 
-from data.data import load_BankChurners_data
+from experiments.data.simulated_data import (
+    generate_initial_data_twocat_normal_case2,
+)  ## Run for case2 !!
 from mgs_grf import DrfSk, KNNTies
 from mgs_grf import MGSGRFOverSampler
-from protocols.baselines import (
+from experiments.protocols.baselines import (
     NoSampling,
     WMGS_NC_cov,
 )
-from validation.classif_experiments import (
-    read_subsampling_indices,
-    run_eval,
-    subsample_to_ratio_indices,
-)
+from experiments.validation.classif_experiments import run_eval
 
 
 def to_str(x):
@@ -35,52 +34,28 @@ def to_float(x):
 
 
 ################# INitialisation #################
-# initial_X, initial_y = load_BankMarketing_data()
-# numeric_features = [0, 5, 11, 12, 13, 14]
-# categorical_features = [1, 2, 3, 4, 6, 7, 8, 9, 10, 15]
+n_samples = 5000
+n_iter = 50
+dimension = 9
 
-initial_X, initial_y = load_BankChurners_data()
-numeric_features = [0, 2, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
-categorical_features = [1, 3, 4, 5, 6]
 ##################################
+categorical_features = [-2, -1]
+numeric_features = np.arange(0, dimension, 1)
 K_MGS = max(len(numeric_features) + 1, 5)
 llambda_MGS = 1.0
 print("Value K_MGS : ", K_MGS)
 print("llambda_MGS  : ", llambda_MGS)
 
-clf = lgb.LGBMClassifier(n_estimators=100, verbosity=-1, n_jobs=8, random_state=0)
+clf = lgb.LGBMClassifier(n_estimators=100, verbosity=-1, n_jobs=5, random_state=0)
 balanced_clf = lgb.LGBMClassifier(
-    n_estimators=100, class_weight="balanced", verbosity=-1, n_jobs=8, random_state=0
-)
-n_iter = 20
-# output_dir_path =  "../saved_experiments_categorial_features/BankMarketing"
-# indices_kept_1 = subsample_to_ratio_indices(X=X,y=y,ratio=0.01,seed_sub=5,
-#    output_dir_subsampling=output_dir_path,
-#    name_subsampling_file='bankmarketing_sub_original_to_1')
-output_dir_path = "../saved_experiments_categorial_features/BankChurners"
-indices_kept_1 = subsample_to_ratio_indices(
-    X=initial_X,
-    y=initial_y,
-    ratio=0.01,
-    seed_sub=5,
-    output_dir_subsampling=output_dir_path,
-    name_subsampling_file="BankChurners_sub_original_to_1",
+    n_estimators=100, class_weight="balanced", verbosity=-1, n_jobs=5, random_state=0
 )
 
-if True:
-    X, y = read_subsampling_indices(
-        X=initial_X,
-        y=initial_y,
-        dir_subsampling="../saved_experiments_categorial_features/BankChurners",
-        name_subsampling_file="BankChurners_sub_original_to_1",
-        get_indexes=False,
-    )
-else:
-    X, y = initial_X, initial_y
-
-output_dir_path = "../saved_experiments_categorial_features/BankChurners/2025/subsample_to_1"
+# all features
+output_dir_path = "../saved_experiments_categorial_features/sim_coh/2025/lgbm/5ksamples/case2"
 Path(output_dir_path).mkdir(parents=True, exist_ok=True)
-init_name_file_original = "2024-11-30-lgbm_"
+init_name_file_original = "2027-01-07-lgbm_"
+
 ###############################################################
 ########################### RUN ###############################
 ###############################################################
@@ -105,6 +80,13 @@ balanced_model = Pipeline(steps=[("preprocessor", preprocessor), ("rf", balanced
 
 # Initial run
 for i in range(n_iter):
+    mean = np.zeros((dimension,))
+    cov = np.eye(dimension, dimension)
+    X, _, y = generate_initial_data_twocat_normal_case2(
+        n_samples=n_samples, mean=mean, cov=cov, random_state=i, verbose=0
+    )  # random_state=i+6 for normal_case6
+    X = X.astype(object)
+
     list_oversampling_and_params = [
         ("None", NoSampling(), {}, model),
         ("CW", NoSampling(), {}, balanced_model),
@@ -132,7 +114,7 @@ for i in range(n_iter):
                 K=K_MGS,
                 llambda=llambda_MGS,
                 categorical_features=categorical_features,
-                Classifier=KNNTies(n_neighbors=1),
+                classifier='1-nn',
                 random_state=i,
                 kind_cov="EmpCov",
                 mucentered=True,
@@ -147,7 +129,7 @@ for i in range(n_iter):
                 K=K_MGS,
                 llambda=llambda_MGS,
                 categorical_features=categorical_features,
-                Classifier=KNNTies(n_neighbors=5),
+                classifier='5-nn',
                 random_state=i,
                 kind_cov="EmpCov",
                 mucentered=True,
@@ -159,7 +141,7 @@ for i in range(n_iter):
         (
             "MGS-NC(mu)(d+1)(EmpCov)",
             WMGS_NC_cov(
-                K=K_MGS,
+                K=5,
                 llambda=llambda_MGS,
                 kind_cov="EmpCov",
                 mucentered=True,
@@ -176,16 +158,10 @@ for i in range(n_iter):
                 K=K_MGS,
                 llambda=llambda_MGS,
                 categorical_features=categorical_features,
-                Classifier=DrfSk(random_state=0, n_jobs=5),
+                classifier='grf', #DrfSk(random_state=i, n_jobs=5),
                 random_state=i,
                 kind_cov="EmpCov",
                 mucentered=True,
-                to_encode=False,
-                to_encode_onehot=False,
-                bool_rf=False,
-                bool_rf_str=False,
-                bool_rf_regressor=False,
-                bool_drf=False,
                 fit_nn_on_continuous_only=True,
             ),
             {},
@@ -193,7 +169,7 @@ for i in range(n_iter):
         ),
     ]
 
-    splitter_stratified = StratifiedKFold(n_splits=5, shuffle=True, random_state=100 + i)
+    splitter_stratified = ShuffleSplit(n_splits=1, test_size=0.2, random_state=i)
     name_file = init_name_file_original + str(i) + ".npy"
     run_eval(
         output_dir=output_dir_path,
@@ -206,4 +182,4 @@ for i in range(n_iter):
         bool_to_save_data=True,
         bool_to_save_runing_time=True,
     )
-    print("FIN Iteration :", i)
+    print("END Iteration :", i)

@@ -1,8 +1,8 @@
 import os
 import sys
-
-sys.path.insert(1, os.path.abspath(os.path.join(os.getcwd(), os.pardir)))
 from pathlib import Path
+sys.path.insert(1, os.path.abspath(Path(__file__).parents[2]))
+
 
 import lightgbm as lgb
 import numpy as np
@@ -13,14 +13,14 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, OneHotEncoder
 
-from data.simulated_data import generate_initial_data_onecat
+from experiments.data.simulated_data import generate_initial_data_onecat
 from mgs_grf import DrfSk
 from mgs_grf import MGSGRFOverSampler
-from protocols.baselines import (
+from experiments.protocols.baselines.baselines import (
     NoSampling,
     WMGS_NC_cov,
 )
-from validation.classif_experiments import run_eval
+from experiments.validation.classif_experiments import run_eval
 
 ##################################################
 ##################################################
@@ -115,7 +115,7 @@ for dimension in dimensions:
                     K=K_MGS,
                     llambda=llambda_MGS,
                     categorical_features=categorical_features,
-                    Classifier=KNeighborsClassifier(n_neighbors=1),
+                    classifier='1-nn',
                     random_state=i,
                     kind_cov="EmpCov",
                     mucentered=True,
@@ -129,7 +129,7 @@ for dimension in dimensions:
                     K=K_MGS,
                     llambda=llambda_MGS,
                     categorical_features=categorical_features,
-                    Classifier=KNeighborsClassifier(n_neighbors=5),
+                    classifier='5-nn',
                     random_state=i,
                     kind_cov="EmpCov",
                     mucentered=True,
@@ -165,45 +165,16 @@ for dimension in dimensions:
                 {},
                 model,
             ),
-            # (
-            #    "MGS(mu)(d+1)(EmpCov) drf",
-            #    MGSGRFOverSampler(
-            #        K=K_MGS,
-            #        llambda=llambda_MGS,
-            #        categorical_features=categorical_features,
-            #        Classifier=drf(min_node_size=1, num_trees=100, splitting_rule="CART",seed=i),
-            #        random_state=i,
-            #        kind_cov = 'EmpCov',
-            #        mucentered=True,
-            #        to_encode=False,
-            #        to_encode_onehot=True,
-            #        bool_rf=False,
-            #        bool_rf_str=False,
-            #        bool_rf_regressor=False,
-            #        bool_drf=True,
-            #        fit_nn_on_continuous_only= True,
-            #    ),
-            #    {},
-            #    model,
-            # ),
             (
                 "MGS(mu)(d+1)(EmpCov) DRFsk classique (mtry=None)",
                 MGSGRFOverSampler(
                     K=K_MGS,
                     llambda=llambda_MGS,
                     categorical_features=categorical_features,
-                    Classifier=DrfSk(
-                        random_state=i, n_jobs=5, max_features=None
-                    ),  # max_features=1.0
+                    classifier="grf",  #DrfSk(random_state=i, n_jobs=5, max_features=None),
                     random_state=i,
                     kind_cov="EmpCov",
                     mucentered=True,
-                    to_encode=False,
-                    to_encode_onehot=False,
-                    bool_rf=False,
-                    bool_rf_str=False,
-                    bool_rf_regressor=False,
-                    bool_drf=False,
                     fit_nn_on_continuous_only=True,
                 ),
                 {},

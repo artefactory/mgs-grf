@@ -3,7 +3,7 @@ import numpy as np
 
 def load_params_twocat_normal_case1():
     beta0 = np.array([0, 0, 0])
-    list_modalities=[
+    list_modalities = [
         "Aa",
         "Ab",
         "Ac",
@@ -86,7 +86,7 @@ def load_params_twocat_normal_case1():
         "Ih",
         "Ii",
     ]
-    list_beta=[
+    list_beta = [
         np.array([11, -5, -6]),
         np.array([10.7, -4.8, -6.1]),
         np.array([11.3, -5, -6.3]),
@@ -169,7 +169,7 @@ def load_params_twocat_normal_case1():
         beta0,
         beta0,
     ]
-    list_intercept=[
+    list_intercept = [
         2,
         2,
         2,
@@ -266,4 +266,4 @@ def load_params_twocat_normal_case1():
         -32,
         30.0,
     ]
-    return list_modalities, list_beta, list_intercept,beta_target
+    return list_modalities, list_beta, list_intercept, beta_target
