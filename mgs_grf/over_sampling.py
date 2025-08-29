@@ -348,7 +348,8 @@ class MGSGRFOverSampler(BaseOverSampler):
 
         np.random.seed(self.random_state)
 
-        oversampled_X = np.zeros((len(X) + n_samples, X_positifs.shape[1]), dtype=object)
+        #oversampled_X = np.zeros((len(X) + n_samples, X_positifs.shape[1]), dtype=object)
+        oversampled_X = [[] for i in range(len(X) + n_samples, X_positifs.shape[1])]
         oversampled_X[:len(X)] = X
         for class_sample, n_samples in self.sampling_strategy_.items():
             if n_samples == 0:
@@ -373,7 +374,8 @@ class MGSGRFOverSampler(BaseOverSampler):
             if self.categorical_features is not None:
                 oversampled_X[len(X):, ~continuous] = new_samples_cat
                 del new_samples_cat
-     
+
+            oversampled_X = np.array(oversampled_X)
             oversampled_y = np.hstack((oversampled_y, np.full(n_samples, class_sample)))
 
         if to_return_classifier:
