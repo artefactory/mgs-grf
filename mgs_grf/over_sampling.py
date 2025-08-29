@@ -42,7 +42,6 @@ class MGSGRFOverSampler(BaseOverSampler):
         llambda=1.0,
         sampling_strategy="auto",
         random_state=None,
-        fit_nn_on_continuous_only=True,
     ):
         """
         Initializes the MGSGRFOverSampler.
@@ -68,8 +67,6 @@ class MGSGRFOverSampler(BaseOverSampler):
             Sampling information to resample the data set., by default "auto"
         random_state : int or str, optional
             Control the randomization of the algorithm., by default None
-        fit_nn_on_continuous_only : bool, optional
-            if True, the nearest-neighbor are derive based on the continuous features using L2 norm. Otherwise, the LNC (from SMOTE-NC) norm is used by default True
         """
         super().__init__(sampling_strategy=sampling_strategy)
         self.K = K
@@ -80,7 +77,6 @@ class MGSGRFOverSampler(BaseOverSampler):
         self.kind_sampling = kind_sampling
         self.mucentered = mucentered
         self.random_state = random_state
-        self.fit_nn_on_continuous_only = fit_nn_on_continuous_only
 
     def _check_X_y(self, X, y):
         """
@@ -162,35 +158,12 @@ class MGSGRFOverSampler(BaseOverSampler):
 
         np.random.seed(self.random_state)
 
-        if (
-            self.fit_nn_on_continuous_only
-        ):  # We fit the nn estimator only on the continuous features
-            neigh = NearestNeighbors(n_neighbors=self.K, algorithm="ball_tree")
-            neigh.fit(X_positifs)
-            neighbor_by_index = neigh.kneighbors(
-                X=X_positifs, n_neighbors=self.K + 1, return_distance=False
-            )
-        else:  # We fit the nn estimator on the continuous features and add the mean (NC like).
-            enc = OneHotEncoder(handle_unknown="ignore")  ## encoding
-            X_positifs_categorical_enc = enc.fit_transform(X_positifs_categorical).toarray()
-            X_positifs_all_features_enc = np.hstack((X_positifs, X_positifs_categorical_enc))
-            cste_med = np.median(
-                np.sqrt(np.var(X_positifs, axis=0))
-            )  ## med constante from continuous variables
-            if not math.isclose(cste_med, 0):
-                X_positifs_all_features_enc[:, dimension_continuous:] = X_positifs_all_features_enc[
-                    :, dimension_continuous:
-                ] * (cste_med / np.sqrt(2))
-                # With one-hot encoding, the median will be repeated twice. We need
-            # to divide by sqrt(2) such that we only have one median value
-            # contributing to the Euclidean distance
-            neigh = NearestNeighbors(n_neighbors=self.K, algorithm="ball_tree")
-            neigh.fit(X_positifs_all_features_enc)
-            neighbor_by_index = neigh.kneighbors(
-                X=X_positifs_all_features_enc,
-                n_neighbors=self.K + 1,
-                return_distance=False,
-            )
+        # We fit the nn estimator only on the continuous features
+        neigh = NearestNeighbors(n_neighbors=self.K, algorithm="ball_tree")
+        neigh.fit(X_positifs)
+        neighbor_by_index = neigh.kneighbors(
+            X=X_positifs, n_neighbors=self.K + 1, return_distance=False
+        )
 
         if self.mucentered:
             # We sample from mean of neighbors
