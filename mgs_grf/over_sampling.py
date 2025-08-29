@@ -35,7 +35,7 @@ class MGSGRFOverSampler(BaseOverSampler):
         self,
         K=None,
         categorical_features=None,
-        classifier="drf",
+        classifier="grf",
         kind_sampling="cholesky",
         kind_cov="EmpCov",
         mucentered=True,
