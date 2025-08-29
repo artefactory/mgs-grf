@@ -206,56 +206,42 @@ class MGSGRFOverSampler(BaseOverSampler):
                     "kind_sampling of MGS not supportedAvailable values : 'cholescky','svd' "
                 )
 
-        elif self.kind_cov == "LWCov":
+        elif self.kind_cov in ["LWCov","OASCov","TraceCov","IdCov""ExpCov"]:
             As = []
+            p = X_positifs.shape[1]
             for i in range(n_minoritaire):
-                covariance, shrinkage = ledoit_wolf(
+                if self.kind_cov=="LWCov":
+                    covariance, shrinkage = ledoit_wolf(
                     X_positifs[neighbor_by_index[i, 1:], :] - mus[neighbor_by_index[i, 0]],
                     assume_centered=True,
-                )
-                As.append(self.llambda * covariance)
-            As = np.array(As)
+                    )
+                    As.append(self.llambda * covariance)
 
-        elif self.kind_cov == "OASCov":
-            As = []
-            for i in range(n_minoritaire):
-                covariance, shrinkage = oas(
-                    X_positifs[neighbor_by_index[i, 1:], :] - mus[neighbor_by_index[i, 0]],
-                    assume_centered=True,
-                )
-                As.append(self.llambda * covariance)
+                elif self.kind_cov == "OASCov":
+                    covariance, shrinkage = oas(
+                        X_positifs[neighbor_by_index[i, 1:], :] - mus[neighbor_by_index[i, 0]],
+                        assume_centered=True,
+                    )
+                    As.append(self.llambda * covariance)
+                elif self.kind_cov == "TraceCov":
+                    covariance = empirical_covariance(
+                        X_positifs[neighbor_by_index[i, 1:], :] - mus[neighbor_by_index[i, 0]],
+                        assume_centered=True,
+                    )
+                    final_covariance = (np.trace(covariance) / p) * np.eye(p)
+                    As.append(self.llambda * final_covariance)
+                elif self.kind_cov == "IdCov":
+                    final_covariance = (1 / p) * np.eye(p)
+                    As.append(self.llambda * final_covariance)
+                elif self.kind_cov == "ExpCov":
+                    diffs = X_positifs[neighbor_by_index[i, 1:], :] - mus[neighbor_by_index[i, 0]]
+                    exp_dist = np.exp(-np.linalg.norm(diffs, axis=1))
+                    weights = exp_dist / (np.sum(exp_dist))
+                    final_covariance = (diffs.T.dot(np.diag(weights)).dot(diffs)) + np.eye(
+                        dimension_continuous
+                    ) * 1e-10
+                    As.append(self.llambda * final_covariance)
             As = np.array(As)
-        elif self.kind_cov == "TraceCov":
-            As = []
-            p = X_positifs.shape[1]
-            for i in range(n_minoritaire):
-                covariance = empirical_covariance(
-                    X_positifs[neighbor_by_index[i, 1:], :] - mus[neighbor_by_index[i, 0]],
-                    assume_centered=True,
-                )
-                final_covariance = (np.trace(covariance) / p) * np.eye(p)
-                As.append(self.llambda * final_covariance)
-            As = np.array(As)
-        elif self.kind_cov == "IdCov":
-            As = []
-            p = X_positifs.shape[1]
-            for i in range(n_minoritaire):
-                final_covariance = (1 / p) * np.eye(p)
-                As.append(self.llambda * final_covariance)
-            As = np.array(As)
-        elif self.kind_cov == "ExpCov":
-            As = []
-            p = X_positifs.shape[1]
-            for i in range(n_minoritaire):
-                diffs = X_positifs[neighbor_by_index[i, 1:], :] - mus[neighbor_by_index[i, 0]]
-                exp_dist = np.exp(-np.linalg.norm(diffs, axis=1))
-                weights = exp_dist / (np.sum(exp_dist))
-                final_covariance = (diffs.T.dot(np.diag(weights)).dot(diffs)) + np.eye(
-                    dimension_continuous
-                ) * 1e-10
-                As.append(self.llambda * final_covariance)
-            As = np.array(As)
-
         else:
             raise ValueError(
                 "kind_cov of MGS not supported"
