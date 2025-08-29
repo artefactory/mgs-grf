@@ -68,40 +68,6 @@ class KNNTies(KNeighborsClassifier):
         {"weights": [StrOptions({"uniform", "distance"}), callable, None]}
     )
 
-    def ____init__(
-        self,
-        n_neighbors=5,
-        *,
-        weights="uniform",
-        algorithm="auto",
-        leaf_size=30,
-        p=2,
-        metric="minkowski",
-        metric_params=None,
-        n_jobs=None,
-    ):
-        """
-        Initialize the KNN with ties.
-
-        Parameters
-        ----------
-        n_neighbors : int, default=5
-            Number of neighbors to use by default for kneighbors queries.
-        weights : {'uniform', 'distance'} or callable, default='uniform'
-            Weight function used in prediction. Possible values:
-            - 'uniform': uniform weights. All points in each neighborhood are weighted equally.
-
-        """
-        super().__init__(
-            n_neighbors,
-            weights=weights,
-            algorithm=algorithm,
-            leaf_size=leaf_size,
-            p=p,
-            metric=metric,
-            metric_params=metric_params,
-            n_jobs=n_jobs,
-        )
 
     def kneighbors(self, X=None, n_neighbors=None, return_distance=True):
         """

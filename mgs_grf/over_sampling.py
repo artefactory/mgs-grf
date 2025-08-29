@@ -35,7 +35,7 @@ class MGSGRFOverSampler(BaseOverSampler):
         self,
         K=None,
         categorical_features=None,
-        classifier="drf",
+        classifier="grf",
         kind_sampling="cholesky",
         kind_cov="EmpCov",
         mucentered=True,
@@ -375,13 +375,13 @@ class MGSGRFOverSampler(BaseOverSampler):
 
         if self.K is None:
             if self.categorical_features is None:
-                self.K = int(X.shape[1])
+                self.K = int(len(X[0]))
                 warnings.warn(
                     "MGSGRFOverSampler called with K=None. We set K to the number of continuous features: K="
                     + str(self.K)
                 )
             else:
-                self.K = int(X.shape[1] - len(self.categorical_features))
+                self.K = int(len(X[0]) - len(self.categorical_features))
                 warnings.warn(
                     "MGSGRFOverSampler called with K=None. We set K to the number of continuous features: K="
                     + str(self.K)
