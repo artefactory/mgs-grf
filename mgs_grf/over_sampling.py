@@ -348,8 +348,8 @@ class MGSGRFOverSampler(BaseOverSampler):
 
         np.random.seed(self.random_state)
 
-        oversampled_X = X
-        oversampled_y = y
+        oversampled_X = np.zeros((len(X) + n_samples, X_positifs.shape[1]), dtype=object)
+        oversampled_X[:len(X)] = X
         for class_sample, n_samples in self.sampling_strategy_.items():
             if n_samples == 0:
                 continue
@@ -368,17 +368,12 @@ class MGSGRFOverSampler(BaseOverSampler):
                     new_samples, X_positifs[:, continuous], X_positifs[:, ~continuous]
                 )  # Generate categorical features
 
+            oversampled_X[len(X):, continuous] = new_samples
+            del new_samples
             if self.categorical_features is not None:
-                new_samples_final = np.zeros((n_samples, X_positifs.shape[1]), dtype=object)
-                new_samples_final[:, continuous] = new_samples
-                new_samples_final[:, ~continuous] = new_samples_cat
-                del new_samples, new_samples_cat
-            else:
-                new_samples_final = new_samples
-                del new_samples
-
-            ## Add the generated samples of the class to the final array
-            oversampled_X = np.concatenate((oversampled_X, new_samples_final), axis=0)
+                oversampled_X[len(X):, ~continuous] = new_samples_cat
+                del new_samples_cat
+     
             oversampled_y = np.hstack((oversampled_y, np.full(n_samples, class_sample)))
 
         if to_return_classifier:
