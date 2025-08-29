@@ -76,10 +76,9 @@ class DrfFitPredictMixin:
             [leafs_by_sample[i] == self.train_samples_leaves for i in range(len(X))]
         )
         n_by_tree = leaves_match.sum(axis=1)[:, np.newaxis, :]
-        # leaves_match = leaves_match.astype(np.float16)
-        # leaves_match /= n_by_tree
-        # w = leaves_match.mean(axis=2) # taille n_samples x n_train
-        return (leaves_match / n_by_tree).mean(axis=2)  # taille n_samples x n_train
+
+        # shape of output: n_samples x n_train
+        return (leaves_match / n_by_tree).mean(axis=2)
 
     def predict(self, X, batch_size=None):
         """
@@ -107,6 +106,7 @@ class DrfFitPredictMixin:
             for batch in np.array_split(X, len(X) // batch_size):
                 list_weights.extend(self.get_weights(batch))
             weights = np.array(list_weights)  # n_samples x n_train
+
         return self.train_y[iterative_random_choice(weights)]
 
 
