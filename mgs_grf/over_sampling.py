@@ -134,7 +134,7 @@ class MGSGRFOverSampler(BaseOverSampler):
         """
         return np.apply_along_axis(lambda a: np.array(a[0]), -1, arr[..., None])
 
-    def _fit_resample_continuous(self, n_synthetic_sample, X_positifs, X_positifs_categorical=None):
+    def _fit_resample_continuous(self, n_synthetic_sample, X_positifs):
         """Generate the synthetic continuous features.
         The categorical features are only used for the distance derivation if needed.
 
@@ -360,7 +360,7 @@ class MGSGRFOverSampler(BaseOverSampler):
                 continuous[self.categorical_features] = False
 
             new_samples = self._fit_resample_continuous(
-                n_samples, X_positifs[:, continuous], X_positifs[:, ~continuous]
+                n_samples, X_positifs[:, continuous]
             )  # Generate continuous features
 
             if self.categorical_features is not None:
