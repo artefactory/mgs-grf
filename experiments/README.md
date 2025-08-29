@@ -14,7 +14,7 @@ In [ECML-PKDD 2025](https://ecmlpkdd.org/2025/). <br>
 
 > **Abstract:** *This study investigates rare event detection on tabular data within binary classification. Many real-world classification tasks, such as in banking sector, deal with mixed features, which have a significant impact on predictive performances. To this purpose, we introduce MGS-GRF, an oversampling strategy designed for mixed features. This method uses a kernel density estimator with locally estimated full-rank covariances to generate continuous features, while categorical ones are drawn from the original samples through a generalized random forest.*
 
-You will find code to reproduce the paper experiments.
+You will find here the code to reproduce the paper experiments. If you simply want to test MGS-GRF on your data, you do not need this submodule, please go to the root of the repository for the main documentation.
 
 ## 🛠 Installation
 
