@@ -14,7 +14,7 @@ from sklearn.covariance import empirical_covariance, ledoit_wolf, oas
 from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import OneHotEncoder
 
-from .forest_for_categorical import DrfSk
+from .generalized_forest import DrfSk
 from .knn import KNNTies
 
 CLASSIFIERS = {
