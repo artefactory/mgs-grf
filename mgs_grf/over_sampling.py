@@ -347,10 +347,7 @@ class MGSGRFOverSampler(BaseOverSampler):
                 )
 
         np.random.seed(self.random_state)
-
-        #oversampled_X = np.zeros((len(X) + n_samples, X_positifs.shape[1]), dtype=object)
-        oversampled_X = [[] for i in range(len(X) + n_samples, X_positifs.shape[1])]
-        oversampled_X[:len(X)] = X
+        
         for class_sample, n_samples in self.sampling_strategy_.items():
             if n_samples == 0:
                 continue
@@ -359,7 +356,9 @@ class MGSGRFOverSampler(BaseOverSampler):
             continuous = np.ones((X_positifs.shape[1]), dtype=bool)
             if self.categorical_features is not None:
                 continuous[self.categorical_features] = False
-
+            
+            oversampled_X = np.zeros((len(X) + n_samples, X_positifs.shape[1]), dtype=object)
+            oversampled_X[:len(X)] = X
             new_samples = self._fit_resample_continuous(
                 n_samples, X_positifs[:, continuous]
             )  # Generate continuous features
@@ -376,7 +375,7 @@ class MGSGRFOverSampler(BaseOverSampler):
                 del new_samples_cat
 
             oversampled_X = np.array(oversampled_X)
-            oversampled_y = np.hstack((oversampled_y, np.full(n_samples, class_sample)))
+            oversampled_y = np.hstack((y, np.full(n_samples, class_sample)))
 
         if to_return_classifier:
             return oversampled_X, oversampled_y, self.clf
