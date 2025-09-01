@@ -4,7 +4,6 @@ Over-sampling module for MGS-GRF strategy.
 
 """
 
-import math
 import warnings
 
 import numpy as np
@@ -12,7 +11,6 @@ from imblearn.over_sampling.base import BaseOverSampler
 from imblearn.utils import check_target_type
 from sklearn.covariance import empirical_covariance, ledoit_wolf, oas
 from sklearn.neighbors import NearestNeighbors
-from sklearn.preprocessing import OneHotEncoder
 
 from .generalized_forest import DrfSk
 from .knn import KNNTies
@@ -347,7 +345,7 @@ class MGSGRFOverSampler(BaseOverSampler):
                 )
 
         np.random.seed(self.random_state)
-        
+
         for class_sample, n_samples in self.sampling_strategy_.items():
             if n_samples == 0:
                 continue
@@ -356,7 +354,7 @@ class MGSGRFOverSampler(BaseOverSampler):
             continuous = np.ones((X_positifs.shape[1]), dtype=bool)
             if self.categorical_features is not None:
                 continuous[self.categorical_features] = False
-            
+
             oversampled_X = np.zeros((len(X) + n_samples, X_positifs.shape[1]), dtype=object)
             oversampled_X[:len(X)] = X
             new_samples = self._fit_resample_continuous(
