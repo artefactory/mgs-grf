@@ -26,7 +26,7 @@ Here is a short example on how to use MGS-GRF:
 from mgs_grf import MGSGRFOverSampler
 
 ## Apply MGS-GRF procedure to oversample the data
-mgs_grf = MGSGRFOverSampler(K=len(numeric_features),categorical_features=categorical_features,random_state=0)
+mgs_grf = MGSGRFOverSampler(categorical_features=categorical_features,random_state=0)
 balanced_X, balanced_y_train = mgs_grf.fit_resample(X_train,y_train)
 
 ## Encode the categorical variables (if any)
