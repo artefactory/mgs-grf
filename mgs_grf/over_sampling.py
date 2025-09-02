@@ -4,7 +4,6 @@ Over-sampling module for MGS-GRF strategy.
 
 """
 
-import math
 import warnings
 
 import numpy as np
@@ -12,9 +11,8 @@ from imblearn.over_sampling.base import BaseOverSampler
 from imblearn.utils import check_target_type
 from sklearn.covariance import empirical_covariance, ledoit_wolf, oas
 from sklearn.neighbors import NearestNeighbors
-from sklearn.preprocessing import OneHotEncoder
 
-from .forest_for_categorical import DrfSk
+from .generalized_forest import DrfSk
 from .knn import KNNTies
 
 CLASSIFIERS = {
@@ -42,7 +40,6 @@ class MGSGRFOverSampler(BaseOverSampler):
         llambda=1.0,
         sampling_strategy="auto",
         random_state=None,
-        fit_nn_on_continuous_only=True,
     ):
         """
         Initializes the MGSGRFOverSampler.
@@ -68,8 +65,6 @@ class MGSGRFOverSampler(BaseOverSampler):
             Sampling information to resample the data set., by default "auto"
         random_state : int or str, optional
             Control the randomization of the algorithm., by default None
-        fit_nn_on_continuous_only : bool, optional
-            if True, the nearest-neighbor are derive based on the continuous features using L2 norm. Otherwise, the LNC (from SMOTE-NC) norm is used by default True
         """
         super().__init__(sampling_strategy=sampling_strategy)
         self.K = K
@@ -80,7 +75,6 @@ class MGSGRFOverSampler(BaseOverSampler):
         self.kind_sampling = kind_sampling
         self.mucentered = mucentered
         self.random_state = random_state
-        self.fit_nn_on_continuous_only = fit_nn_on_continuous_only
 
     def _check_X_y(self, X, y):
         """
@@ -138,7 +132,7 @@ class MGSGRFOverSampler(BaseOverSampler):
         """
         return np.apply_along_axis(lambda a: np.array(a[0]), -1, arr[..., None])
 
-    def _fit_resample_continuous(self, n_synthetic_sample, X_positifs, X_positifs_categorical=None):
+    def _fit_resample_continuous(self, n_synthetic_sample, X_positifs):
         """Generate the synthetic continuous features.
         The categorical features are only used for the distance derivation if needed.
 
@@ -162,35 +156,12 @@ class MGSGRFOverSampler(BaseOverSampler):
 
         np.random.seed(self.random_state)
 
-        if (
-            self.fit_nn_on_continuous_only
-        ):  # We fit the nn estimator only on the continuous features
-            neigh = NearestNeighbors(n_neighbors=self.K, algorithm="ball_tree")
-            neigh.fit(X_positifs)
-            neighbor_by_index = neigh.kneighbors(
-                X=X_positifs, n_neighbors=self.K + 1, return_distance=False
-            )
-        else:  # We fit the nn estimator on the continuous features and add the mean (NC like).
-            enc = OneHotEncoder(handle_unknown="ignore")  ## encoding
-            X_positifs_categorical_enc = enc.fit_transform(X_positifs_categorical).toarray()
-            X_positifs_all_features_enc = np.hstack((X_positifs, X_positifs_categorical_enc))
-            cste_med = np.median(
-                np.sqrt(np.var(X_positifs, axis=0))
-            )  ## med constante from continuous variables
-            if not math.isclose(cste_med, 0):
-                X_positifs_all_features_enc[:, dimension_continuous:] = X_positifs_all_features_enc[
-                    :, dimension_continuous:
-                ] * (cste_med / np.sqrt(2))
-                # With one-hot encoding, the median will be repeated twice. We need
-            # to divide by sqrt(2) such that we only have one median value
-            # contributing to the Euclidean distance
-            neigh = NearestNeighbors(n_neighbors=self.K, algorithm="ball_tree")
-            neigh.fit(X_positifs_all_features_enc)
-            neighbor_by_index = neigh.kneighbors(
-                X=X_positifs_all_features_enc,
-                n_neighbors=self.K + 1,
-                return_distance=False,
-            )
+        # We fit the nn estimator only on the continuous features
+        neigh = NearestNeighbors(n_neighbors=self.K, algorithm="ball_tree")
+        neigh.fit(X_positifs)
+        neighbor_by_index = neigh.kneighbors(
+            X=X_positifs, n_neighbors=self.K + 1, return_distance=False
+        )
 
         if self.mucentered:
             # We sample from mean of neighbors
@@ -233,56 +204,42 @@ class MGSGRFOverSampler(BaseOverSampler):
                     "kind_sampling of MGS not supportedAvailable values : 'cholescky','svd' "
                 )
 
-        elif self.kind_cov == "LWCov":
+        elif self.kind_cov in ["LWCov","OASCov","TraceCov","IdCov""ExpCov"]:
             As = []
+            p = X_positifs.shape[1]
             for i in range(n_minoritaire):
-                covariance, shrinkage = ledoit_wolf(
+                if self.kind_cov=="LWCov":
+                    covariance, shrinkage = ledoit_wolf(
                     X_positifs[neighbor_by_index[i, 1:], :] - mus[neighbor_by_index[i, 0]],
                     assume_centered=True,
-                )
-                As.append(self.llambda * covariance)
-            As = np.array(As)
+                    )
+                    As.append(self.llambda * covariance)
 
-        elif self.kind_cov == "OASCov":
-            As = []
-            for i in range(n_minoritaire):
-                covariance, shrinkage = oas(
-                    X_positifs[neighbor_by_index[i, 1:], :] - mus[neighbor_by_index[i, 0]],
-                    assume_centered=True,
-                )
-                As.append(self.llambda * covariance)
+                elif self.kind_cov == "OASCov":
+                    covariance, shrinkage = oas(
+                        X_positifs[neighbor_by_index[i, 1:], :] - mus[neighbor_by_index[i, 0]],
+                        assume_centered=True,
+                    )
+                    As.append(self.llambda * covariance)
+                elif self.kind_cov == "TraceCov":
+                    covariance = empirical_covariance(
+                        X_positifs[neighbor_by_index[i, 1:], :] - mus[neighbor_by_index[i, 0]],
+                        assume_centered=True,
+                    )
+                    final_covariance = (np.trace(covariance) / p) * np.eye(p)
+                    As.append(self.llambda * final_covariance)
+                elif self.kind_cov == "IdCov":
+                    final_covariance = (1 / p) * np.eye(p)
+                    As.append(self.llambda * final_covariance)
+                elif self.kind_cov == "ExpCov":
+                    diffs = X_positifs[neighbor_by_index[i, 1:], :] - mus[neighbor_by_index[i, 0]]
+                    exp_dist = np.exp(-np.linalg.norm(diffs, axis=1))
+                    weights = exp_dist / (np.sum(exp_dist))
+                    final_covariance = (diffs.T.dot(np.diag(weights)).dot(diffs)) + np.eye(
+                        dimension_continuous
+                    ) * 1e-10
+                    As.append(self.llambda * final_covariance)
             As = np.array(As)
-        elif self.kind_cov == "TraceCov":
-            As = []
-            p = X_positifs.shape[1]
-            for i in range(n_minoritaire):
-                covariance = empirical_covariance(
-                    X_positifs[neighbor_by_index[i, 1:], :] - mus[neighbor_by_index[i, 0]],
-                    assume_centered=True,
-                )
-                final_covariance = (np.trace(covariance) / p) * np.eye(p)
-                As.append(self.llambda * final_covariance)
-            As = np.array(As)
-        elif self.kind_cov == "IdCov":
-            As = []
-            p = X_positifs.shape[1]
-            for i in range(n_minoritaire):
-                final_covariance = (1 / p) * np.eye(p)
-                As.append(self.llambda * final_covariance)
-            As = np.array(As)
-        elif self.kind_cov == "ExpCov":
-            As = []
-            p = X_positifs.shape[1]
-            for i in range(n_minoritaire):
-                diffs = X_positifs[neighbor_by_index[i, 1:], :] - mus[neighbor_by_index[i, 0]]
-                exp_dist = np.exp(-np.linalg.norm(diffs, axis=1))
-                weights = exp_dist / (np.sum(exp_dist))
-                final_covariance = (diffs.T.dot(np.diag(weights)).dot(diffs)) + np.eye(
-                    dimension_continuous
-                ) * 1e-10
-                As.append(self.llambda * final_covariance)
-            As = np.array(As)
-
         else:
             raise ValueError(
                 "kind_cov of MGS not supported"
@@ -389,8 +346,6 @@ class MGSGRFOverSampler(BaseOverSampler):
 
         np.random.seed(self.random_state)
 
-        oversampled_X = X
-        oversampled_y = y
         for class_sample, n_samples in self.sampling_strategy_.items():
             if n_samples == 0:
                 continue
@@ -400,8 +355,10 @@ class MGSGRFOverSampler(BaseOverSampler):
             if self.categorical_features is not None:
                 continuous[self.categorical_features] = False
 
+            oversampled_X = np.zeros((len(X) + n_samples, X_positifs.shape[1]), dtype=object)
+            oversampled_X[:len(X)] = X
             new_samples = self._fit_resample_continuous(
-                n_samples, X_positifs[:, continuous], X_positifs[:, ~continuous]
+                n_samples, X_positifs[:, continuous]
             )  # Generate continuous features
 
             if self.categorical_features is not None:
@@ -409,18 +366,14 @@ class MGSGRFOverSampler(BaseOverSampler):
                     new_samples, X_positifs[:, continuous], X_positifs[:, ~continuous]
                 )  # Generate categorical features
 
+            oversampled_X[len(X):, continuous] = new_samples
+            del new_samples
             if self.categorical_features is not None:
-                new_samples_final = np.zeros((n_samples, X_positifs.shape[1]), dtype=object)
-                new_samples_final[:, continuous] = new_samples
-                new_samples_final[:, ~continuous] = new_samples_cat
-                del new_samples, new_samples_cat
-            else:
-                new_samples_final = new_samples
-                del new_samples
+                oversampled_X[len(X):, ~continuous] = new_samples_cat
+                del new_samples_cat
 
-            ## Add the generated samples of the class to the final array
-            oversampled_X = np.concatenate((oversampled_X, new_samples_final), axis=0)
-            oversampled_y = np.hstack((oversampled_y, np.full(n_samples, class_sample)))
+            oversampled_X = np.array(oversampled_X)
+            oversampled_y = np.hstack((y, np.full(n_samples, class_sample)))
 
         if to_return_classifier:
             return oversampled_X, oversampled_y, self.clf

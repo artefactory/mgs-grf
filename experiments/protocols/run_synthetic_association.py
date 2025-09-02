@@ -175,7 +175,6 @@ for dimension in dimensions:
                     random_state=i,
                     kind_cov="EmpCov",
                     mucentered=True,
-                    fit_nn_on_continuous_only=True,
                 ),
                 {},
                 model,

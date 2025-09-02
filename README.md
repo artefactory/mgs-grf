@@ -26,16 +26,18 @@ Here is a short example on how to use MGS-GRF:
 from mgs_grf import MGSGRFOverSampler
 
 ## Apply MGS-GRF procedure to oversample the data
-mgs_grf = MGSGRFOverSampler(K=len(numeric_features),categorical_features=categorical_features,random_state=0)
-balanced_X, balanced_y_train = mgs_grf.fit_resample(X_train,y_train)
+mgs_grf = MGSGRFOverSampler(categorical_features=categorical_features, random_state=0)
+X_train_balanced, y_train_balanced = mgs_grf.fit_resample(X_train_imbalanced, y_train_imbalanced)
 
-## Encode the categorical variables (if any)
-enc = OneHotEncoder(handle_unknown='ignore',sparse_output=False)
-balanced_X_train = np.hstack((balanced_X[:,numeric_features], enc.fit_transform(balanced_X[:,categorical_features])))
+## Encode the categorical variables
+enc = OneHotEncoder(handle_unknown="ignore", sparse_output=False)
+X_train_balanced_enc = np.hstack((X_train_balanced[:,numeric_features],
+                                  enc.fit_transform(X_train_balanced[:,categorical_features])))
+X_test_enc = np.hstack((X_test[:,numeric_features], enc.transform(X_test[:,categorical_features])))
 
 # Fit the final classifier on the augmented data
-clf_mgs = lgb.LGBMClassifier(n_estimators=100,verbosity=-1, random_state=0)
-clf_mgs.fit(balanced_X_train, balanced_y_train)
+clf = lgb.LGBMClassifier(n_estimators=100, verbosity=-1, random_state=0)
+clf.fit(X_train_balanced_enc, y_train_balanced)
 
 ```
 A more detailed notebook example is available in [this notebook](example/example.ipynb).
