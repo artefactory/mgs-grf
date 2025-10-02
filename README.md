@@ -63,10 +63,12 @@ This work was done through a partenership between **Artefact Research Center** a
 
 If you find the code useful, please consider citing us :
 ```
-@article{sakho2025harnessing,
+@inproceedings{sakho2025harnessing,
   title={Harnessing Mixed Features for Imbalance Data Oversampling: Application to Bank Customers Scoring},
   author={Sakho, Abdoulaye and Malherbe, Emmanuel and Gauthier, Carl-Erik and Scornet, Erwan},
-  journal={arXiv preprint arXiv:2503.22730},
-  year={2025}
+  booktitle={Joint European Conference on Machine Learning and Knowledge Discovery in Databases},
+  pages={247--264},
+  year={2025},
+  organization={Springer}
 }
 ```
