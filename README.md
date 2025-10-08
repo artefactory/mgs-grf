@@ -1,6 +1,12 @@
 <div align="center">
 
 # MGS-GRF
+[![Linting , formatting, imports sorting: ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/charliermarsh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Pre-commit](https://img.shields.io/badge/pre--commit-enabled-informational?logo=pre-commit&logoColor=white)](https://github.com/artefactory/mgs-grf/blob/main/.pre-commit-config.yaml)
+
+
+[![cite](https://img.shields.io/badge/Citation-BibTeX-cyan)](./CITATION.bib)
+
 
 </div>
 
