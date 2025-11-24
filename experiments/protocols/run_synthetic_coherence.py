@@ -16,7 +16,6 @@ from sklearn.preprocessing import FunctionTransformer, OneHotEncoder
 from experiments.data.simulated_data import (
     generate_initial_data_twocat_normal_case2,
 )  ## Run for case2 !!
-from mgs_grf import DrfSk, KNNTies
 from mgs_grf import MGSGRFOverSampler
 from experiments.protocols.baselines import (
     NoSampling,
