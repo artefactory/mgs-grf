@@ -1,49 +1,42 @@
-[project]
-requires-python = ">=3.9"
+[build-system]
+requires = ["setuptools>=78.1.1", "wheel", "Cython>=3.1.2","numpy>=2.3.1","scikit-learn>=1.6.1" ]
+build-backend = "setuptools.build_meta"
 
-[tool.ruff]
-select = [
-  "E",
-  "W",
-  "F",
-  "I",
-  "N",
-  "D",
-  "ANN",
-  "Q",
-  "RET",
-  "ARG",
-  "PTH",
-  "PD",
-] # See: https://beta.ruff.rs/docs/rules/
-ignore = ["D203", "D213", "ANN101", "ANN102", "ANN204", "ANN001", "ANN002", "ANN202", "ANN201", "ANN206", "ANN003", "N802", "N803", "N806", "PTH100", "PTH110", "PTH118", "PTH123","PTH113", "PTH104"]
-line-length = 100
-exclude = [
-  ".bzr",
-  ".direnv",
-  ".eggs",
-  ".git",
-  ".ruff_cache",
-  ".svn",
-  ".tox",
-  ".venv",
-  "__pypackages__",
-  "_build",
-  "buck-out",
-  "build",
-  "dist",
-  "node_modules",
-  "venv",
+[project]
+name = "mgs_grf"
+authors = [
+    {name = "Abdoulaye SAKHO", email = "abdoulaye7020@gmail.com"},
+    {name = "artefactory", email = "abdoulaye.sakho@artefact.com"},
+]
+version = "0.0.14"
+description = "MGS-GRF for imbalanced-mixed-tabular data"
+readme = "README.md"
+license = "MIT"
+keywords = ["mgs_grf", "imbalanced-data", "oversampling","tabular data", "machine-learning"]
+classifiers = [
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Software Development"
+]
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "numpy>=1.26.4",
+    "scikit-learn>=1.5.1",
+    "imbalanced-learn==0.12.3",
 ]
 
-[tool.ruff.pydocstyle]
-convention = "numpy"
+[project.urls]
+"Homepage" = "https://github.com/artefactory/mgs-grf"
+"Repository" = "https://github.com/artefactory/mgs-grf"
 
-[tool.ruff.format]
-quote-style = "double"
 
-[tool.ruff.isort]
-known-first-party = ["choice_learn", "config", "tests"]
-
-[tool.bandit.assert_used]
-exclude_dirs = ["tests/"]
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
+    "pre-commit>=4.3.0",
+    "matplotlib>=3.10.0",
+    "pandas>=2.3.0",
+    "ucimlrepo>=0.0.7",
+]
