@@ -20,7 +20,12 @@ MGS-GRF, an oversampling strategy presented at [ECML-PKDD 2025](https://ecmlpkdd
 
 ## 🛠 Installation
 
-First you can clone the repository:
+**From Pypi**:
+```bash
+pip install mgs-grf
+```
+
+**From source**:
 ```bash
 git clone git@github.com:artefactory/mgs-grf.git
 ```
