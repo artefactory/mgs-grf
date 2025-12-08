@@ -1,10 +1,14 @@
 <div align="center">
 
 # MGS-GRF
+
+[![CI Status](https://github.com/artefactory/mgs-grf/actions/workflows/ci.yaml/badge.svg)](https://github.com/artefactory/mgs-grf/actions/workflows/ci.yaml?query=branch%3Amain)
 [![Linting , formatting, imports sorting: ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/charliermarsh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Pre-commit](https://img.shields.io/badge/pre--commit-enabled-informational?logo=pre-commit&logoColor=white)](https://github.com/artefactory/mgs-grf/blob/main/.pre-commit-config.yaml)
+[![License](https://img.shields.io/github/license/artefactory/mgs-grf)](LICENSE)
 
-
+[![Python Versions](https://img.shields.io/pypi/pyversions/mgs-grf?label=python)](https://pypi.org/project/mgs-grf/)
+[![PyPI Version](https://img.shields.io/pypi/v/mgs-grf.svg)](https://pypi.org/project/mgs-grf/)
 [![cite](https://img.shields.io/badge/Citation-BibTeX-cyan)](./CITATION.bib)
 
 
