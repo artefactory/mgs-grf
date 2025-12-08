@@ -40,3 +40,7 @@ dev = [
     "pandas>=2.3.0",
     "ucimlrepo>=0.0.7",
 ]
+
+[tool.setuptools.packages.find]
+include = ["mgs_grf*"]
+exclude = ["experiments*"]
