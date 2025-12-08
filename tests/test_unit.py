@@ -45,7 +45,9 @@ def test_fit_resample_increases_minority_count():
     # imbalanced target: class 0 -> 80, class 1 -> 20
     y = np.array([0] * 80 + [1] * 20)
     sampler = _instantiate(MGSGRFOverSampler,K=X.shape[1], random_state=42)
-    X_res, y_res = _fit_resample(sampler, X, y)
+    # Continuous-only fitting should emit a warning; catch it
+    with pytest.warns(UserWarning, match="continuous features only"):
+        X_res, y_res = _fit_resample(sampler, X, y)
     assert X_res.shape[0] == len(y_res)
     orig_counts = _counts(y)
     new_counts = _counts(y_res)
@@ -62,8 +64,11 @@ def test_reproducible_with_random_state():
     cls = MGSGRFOverSampler
     s1 = _instantiate(cls,K=X.shape[1], random_state=0)
     s2 = _instantiate(cls, K=X.shape[1], random_state=0)
-    X1, y1 = _fit_resample(s1, X, y)
-    X2, y2 = _fit_resample(s2, X, y)
+    # Catch warnings for continuous-only fitting
+    with pytest.warns(UserWarning, match="continuous features only"):
+        X1, y1 = _fit_resample(s1, X, y)
+    with pytest.warns(UserWarning, match="continuous features only"):
+        X2, y2 = _fit_resample(s2, X, y)
     # Results should be identical when random_state is fixed
     assert X1.shape == X2.shape
     assert y1.shape == y2.shape
@@ -78,7 +83,9 @@ def test_multiclass_minority_enhanced():
     # three classes with varying counts
     y = np.array([0] * 70 + [1] * 40 + [2] * 10)
     sampler = _instantiate(MGSGRFOverSampler,K=X.shape[1], random_state=7)
-    X_res, y_res = _fit_resample(sampler, X, y)
+    # Catch warning for continuous-only fitting
+    with pytest.warns(UserWarning, match="continuous features only"):
+        X_res, y_res = _fit_resample(sampler, X, y)
     new_counts = _counts(y_res)
     # smallest class (2) should increase
     assert new_counts.get(2, 0) > 10
