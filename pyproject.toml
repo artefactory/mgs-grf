@@ -8,7 +8,7 @@ authors = [
     {name = "Abdoulaye SAKHO", email = "abdoulaye7020@gmail.com"},
     {name = "artefactory", email = "abdoulaye.sakho@artefact.com"},
 ]
-version = "0.0.1"
+version = "0.0.2"
 description = "MGS-GRF for imbalanced-mixed-tabular data"
 readme = "README.md"
 license = "MIT"
