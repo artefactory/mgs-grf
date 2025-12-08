@@ -8,7 +8,7 @@ authors = [
     {name = "Abdoulaye SAKHO", email = "abdoulaye7020@gmail.com"},
     {name = "artefactory", email = "abdoulaye.sakho@artefact.com"},
 ]
-version = "0.0.14"
+version = "0.0.1"
 description = "MGS-GRF for imbalanced-mixed-tabular data"
 readme = "README.md"
 license = "MIT"
@@ -19,7 +19,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Mathematics",
     "Topic :: Software Development"
 ]
-requires-python = ">=3.11,<3.13"
+requires-python = ">=3.9,<3.13"
 dependencies = [
     "numpy>=1.26.4",
     "scikit-learn>=1.5.1",
