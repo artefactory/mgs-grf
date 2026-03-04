@@ -1,5 +1,21 @@
 <div align="center">
 
+# Do we need rebalancing strategies? A theoretical and empirical study around SMOTE and its variants
+
+
+Abdoulaye SAKHO<sup>1, 2</sup>, Emmanuel MALHERBE<sup>1</sup>, Erwan SCORNET<sup>2</sup> <br>
+ <sup>1</sup> <sub> [Artefact Research Center](https://www.artefact.com/technologies/artefact-research-center/), </sub> <br> <sup>2</sup> <sub>[*LPSM* - Sorbonne Université](https://www.lpsm.paris/),</sub>
+
+In [AISTATS 2026](https://virtual.aistats.org/Conferences/2026). <br>
+[[Full Paper]](https://arxiv.org/abs/2402.03819) <br>
+
+</div>
+
+The experiments of this first paper can be found at the following repository: [smote_strategies_study](https://github.com/artefactory/smote_strategies_study)
+
+
+<div align="center">
+
 # Harnessing Mixed Features for Imbalance Data Oversampling: Application to Bank Customers Scoring
 
 
@@ -37,31 +53,3 @@ The data sets of used for our article should be dowloaded  inside the *data/exte
 * [BankMarketing](https://archive.ics.uci.edu/dataset/222/bank+marketing)
 * [BankChurners](https://www.kaggle.com/datasets/thedevastator/predicting-credit-card-customer-attrition-with-m)
 
-
-## 🙏 Acknowledgements
-
-This work was done through a partenership between **Artefact Research Center** and the **Laboratoire de Probabilités Statistiques et Modélisation** (LPSM) of Sorbonne University.
-
-<p align="center">
-  <a href="https://www.artefact.com/data-consulting-transformation/artefact-research-center/">
-    <img src="https://raw.githubusercontent.com/artefactory/choice-learn/main/docs/illustrations/logos/logo_arc.png" height="80" />
-  </a>
-  &emsp;
-  &emsp;
-  <a href="https://www.lpsm.paris/">
-    <img src="data/logos//logo_LPSM.jpg" height="95" />
-  </a>
-</p>
-
-
-## 📜 Citation
-
-If you find the code useful, please consider citing us :
-```
-@article{sakho2025harnessing,
-  title={Harnessing Mixed Features for Imbalance Data Oversampling: Application to Bank Customers Scoring},
-  author={Sakho, Abdoulaye and Malherbe, Emmanuel and Gauthier, Carl-Erik and Scornet, Erwan},
-  journal={arXiv preprint arXiv:2503.22730},
-  year={2025}
-}
-```
