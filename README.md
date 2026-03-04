@@ -15,7 +15,7 @@
 </div>
 
 If you face *imbalance data* in your machine learning project, this package is here to pre-process your data. It is an efficient and ready-to-use implementation of
-MGS-GRF, an oversampling strategy presented designed to handle large-scale and mixed imbalanced data-set — with *both continuous and categorical features*.
+MGS-GRF, an oversampling strategy designed to handle large-scale and mixed imbalanced data-set — with *both continuous and categorical features*.
 
 The MGS-GRF package is supported by two peer-reviewed publications:
 > &nbsp; &nbsp; A paper at AISTATS 2026 introducing the algorithm for continuous input: *Do we need rebalancing strategies? A theoretical and empirical study around SMOTE and its variants* [📄](https://arxiv.org/abs/2402.03819)
