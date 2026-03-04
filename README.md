@@ -15,7 +15,12 @@
 </div>
 
 If you face *imbalance data* in your machine learning project, this package is here to pre-process your data. It is an efficient and ready-to-use implementation of
-MGS-GRF, an oversampling strategy presented at [ECML-PKDD 2025](https://ecmlpkdd.org/2025/) conference, designed to handle large-scale and mixed imbalanced data-set — with *both continuous and categorical features*.
+MGS-GRF, an oversampling strategy presented designed to handle large-scale and mixed imbalanced data-set — with *both continuous and categorical features*.
+
+The MGS-GRF package is supported by two peer-reviewed publications:
+> &nbsp; &nbsp; A paper at AISTATS 2026 introducing the algorithm for continuous input: *Do we need rebalancing strategies? A theoretical and empirical study around SMOTE and its variants* [📄](https://arxiv.org/abs/2402.03819)
+
+> &nbsp; &nbsp; A paper at ECML-PKDD 2025 presenting the extesion of MG to categorical features (MGS-GRF), *Harnessing Mixed Features for Imbalance Data Oversampling: Application to Bank Customers Scoring*  [📄](https://ecmlpkdd-storage.s3.eu-central-1.amazonaws.com/preprints/2025/ads/preprint_ecml_pkdd_2025_ads_1005.pdf)
 
 
 ## 🛠 Installation
@@ -77,6 +82,15 @@ This work was done through a partenership between **Artefact Research Center** a
 ## 📜 Citation
 
 If you find the code useful, please consider citing us :
+
+```
+@article{sakho2024we,
+  title={Do we need rebalancing strategies? A theoretical and empirical study around SMOTE and its variants},
+  author={Sakho, Abdoulaye and Malherbe, Emmanuel and Scornet, Erwan},
+  journal={arXiv preprint arXiv:2402.03819},
+  year={2024}
+}
+```
 ```
 @inproceedings{sakho2025harnessing,
   title={Harnessing Mixed Features for Imbalance Data Oversampling: Application to Bank Customers Scoring},
