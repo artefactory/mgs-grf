@@ -11,7 +11,7 @@ In [AISTATS 2026](https://virtual.aistats.org/Conferences/2026). <br>
 
 </div>
 
-The experiments of this first paper can be found at the following repository: https://github.com/artefactory/smote_strategies_study
+The experiments of this first paper can be found at the following repository: [smote_strategies_study](https://github.com/artefactory/smote_strategies_study)
 
 
 <div align="center">
