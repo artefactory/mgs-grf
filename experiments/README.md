@@ -4,7 +4,7 @@
 
 
 Abdoulaye SAKHO<sup>1, 2</sup>, Emmanuel MALHERBE<sup>1</sup>, Erwan SCORNET<sup>2</sup> <br>
- <sup>1</sup> <sub> [Artefact Research Center](https://www.artefact.com/technologies/artefact-research-center/), </sub> <br> <sup>2</sup> <sub>[*LPSM* - Sorbonne Université](https://www.lpsm.paris/),</sub> <sup>
+ <sup>1</sup> <sub> [Artefact Research Center](https://www.artefact.com/technologies/artefact-research-center/), </sub> <br> <sup>2</sup> <sub>[*LPSM* - Sorbonne Université](https://www.lpsm.paris/),</sub>
 
 In [AISTATS 2026](https://virtual.aistats.org/Conferences/2026). <br>
 [[Full Paper]](https://arxiv.org/abs/2402.03819) <br>
