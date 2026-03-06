@@ -118,9 +118,9 @@ def compute_asso_over_dimensions(
         del X_tilde,target_numeric_tilde,w_gauss_tilde
         clf_bayes = lgb.LGBMClassifier(verbosity=-1,n_jobs=5,random_state=0)
         clf_bayes.fit(X_minority_tilde[:, :-1].astype(float), X_minority_tilde[:, -1])
-        for i in range(n_iter):
+        for j in range(n_iter):
             output_dir_path =init_output_dir_path  +str(dimension)
-            name_file = init_name_file + str(i) + ".npy"
+            name_file = init_name_file + str(j) + ".npy"
             X_train = np.load(
                 os.path.join(output_dir_path, "xtrain" + name_file),allow_pickle=True,
             )
