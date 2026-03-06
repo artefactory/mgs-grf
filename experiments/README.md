@@ -11,6 +11,8 @@ In [AISTATS 2026](https://virtual.aistats.org/Conferences/2026). <br>
 
 </div>
 
+> **Abstract:** *Synthetic Minority Oversampling Technique (SMOTE) is a common rebalancing strategy for handling imbalanced tabular data sets. However, few works analyse SMOTE theoretically. In this paper, we derive several non-asymptotic upper bound on SMOTE density. From these results, we prove that SMOTE (with default parameter) tends to copy the original minority samples asymptotically. We confirm and illustrate this first theoretical behavior numerically. Furthermore, we prove that SMOTE density vanishes near the boundary of the support of the minority class distribution. We then adapt SMOTE based on our theoretical findings to introduce two new variants. *
+
 The experiments of this first paper can be found at the following repository: [smote_strategies_study](https://github.com/artefactory/smote_strategies_study)
 
 
