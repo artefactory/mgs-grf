@@ -40,7 +40,7 @@ And install the required packages into your environment (conda, mamba or pip):
 pip install -r requirements.txt
 ```
 
-## 🚀 How to use the MGS-GRF Algorithm to learn on imbalanced data
+## 💻 How to use the MGS-GRF Algorithm to learn on imbalanced data
 Here is a short example on how to use MGS-GRF: 
 ```python
 from mgs_grf import MGSGRFOverSampler
@@ -87,8 +87,9 @@ If you find the code useful, please consider citing us :
 @article{sakho2024we,
   title={Do we need rebalancing strategies? A theoretical and empirical study around SMOTE and its variants},
   author={Sakho, Abdoulaye and Malherbe, Emmanuel and Scornet, Erwan},
-  journal={arXiv preprint arXiv:2402.03819},
-  year={2024}
+  booktitle={The 29th International Conference on Artificial Intelligence and Statistics},
+  year={2026}
+  organization={PMLR}
 }
 ```
 ```
