@@ -84,11 +84,11 @@ This work was done through a partenership between **Artefact Research Center** a
 If you find the code useful, please consider citing us :
 
 ```
-@article{sakho2024we,
+@inproceedings{sakho2024we,
   title={Do we need rebalancing strategies? A theoretical and empirical study around SMOTE and its variants},
   author={Sakho, Abdoulaye and Malherbe, Emmanuel and Scornet, Erwan},
   booktitle={The 29th International Conference on Artificial Intelligence and Statistics},
-  year={2026}
+  year={2026},
   organization={PMLR}
 }
 ```
