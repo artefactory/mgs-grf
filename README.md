@@ -83,7 +83,7 @@ This work was done through a partenership between **Artefact Research Center** a
 
 If you find the code useful, please consider citing us :
 
-```
+```bibtex
 @inproceedings{sakho2024we,
   title={Do we need rebalancing strategies? A theoretical and empirical study around SMOTE and its variants},
   author={Sakho, Abdoulaye and Malherbe, Emmanuel and Scornet, Erwan},
@@ -92,7 +92,7 @@ If you find the code useful, please consider citing us :
   organization={PMLR}
 }
 ```
-```
+```bibtex
 @inproceedings{sakho2025harnessing,
   title={Harnessing Mixed Features for Imbalance Data Oversampling: Application to Bank Customers Scoring},
   author={Sakho, Abdoulaye and Malherbe, Emmanuel and Gauthier, Carl-Erik and Scornet, Erwan},
