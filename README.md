@@ -92,6 +92,7 @@ If you find the code useful, please consider citing us :
   organization={PMLR}
 }
 ```
+
 ```bibtex
 @inproceedings{sakho2025harnessing,
   title={Harnessing Mixed Features for Imbalance Data Oversampling: Application to Bank Customers Scoring},
