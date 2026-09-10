@@ -9,6 +9,7 @@ import warnings
 import numpy as np
 from imblearn.over_sampling.base import BaseOverSampler
 from imblearn.utils import check_target_type
+from sklearn.base import clone
 from sklearn.covariance import empirical_covariance, ledoit_wolf, oas
 from sklearn.neighbors import NearestNeighbors
 
@@ -204,7 +205,7 @@ class MGSGRFOverSampler(BaseOverSampler):
                     "kind_sampling of MGS not supportedAvailable values : 'cholescky','svd' "
                 )
 
-        elif self.kind_cov in ["LWCov","OASCov","TraceCov","IdCov""ExpCov"]:
+        elif self.kind_cov in ["LWCov", "OASCov", "TraceCov", "IdCov", "ExpCov"]:
             As = []
             p = X_positifs.shape[1]
             for i in range(n_minoritaire):
@@ -277,14 +278,15 @@ class MGSGRFOverSampler(BaseOverSampler):
             New synthetic samples, categorical features only.
 
         """
-        self.clf = CLASSIFIERS[self.classifier]
+        self.clf = clone(CLASSIFIERS[self.classifier])
+        X_positifs_float = X_positifs.astype(float)
         if len(self.categorical_features) == 1:  # ravel in case of one categorical freatures
             self.clf.fit(
-                X_positifs, X_positifs_categorical.ravel().astype(str)
+                X_positifs_float, X_positifs_categorical.ravel().astype(str)
             )  # learn on continuous features in order to predict categorical features
         else:
             self.clf.fit(
-                X_positifs, X_positifs_categorical.astype(str)
+                X_positifs_float, X_positifs_categorical.astype(str)
             )  # learn on continuous features in order to predict categorical features
 
         if len(self.categorical_features) == 1:  # Ravel in case of one categorical freatures
@@ -346,6 +348,8 @@ class MGSGRFOverSampler(BaseOverSampler):
 
         np.random.seed(self.random_state)
 
+        oversampled_X = X
+        oversampled_y = y
         for class_sample, n_samples in self.sampling_strategy_.items():
             if n_samples == 0:
                 continue
@@ -355,8 +359,6 @@ class MGSGRFOverSampler(BaseOverSampler):
             if self.categorical_features is not None:
                 continuous[self.categorical_features] = False
 
-            oversampled_X = np.zeros((len(X) + n_samples, X_positifs.shape[1]), dtype=object)
-            oversampled_X[:len(X)] = X
             new_samples = self._fit_resample_continuous(
                 n_samples, X_positifs[:, continuous]
             )  # Generate continuous features
@@ -366,14 +368,20 @@ class MGSGRFOverSampler(BaseOverSampler):
                     new_samples, X_positifs[:, continuous], X_positifs[:, ~continuous]
                 )  # Generate categorical features
 
-            oversampled_X[len(X):, continuous] = new_samples
-            del new_samples
+            
             if self.categorical_features is not None:
-                oversampled_X[len(X):, ~continuous] = new_samples_cat
+                full_new_samples = np.empty((n_samples, X_positifs.shape[1]), dtype=object)
+                full_new_samples[:, continuous] = new_samples
+                full_new_samples[:, ~continuous] = new_samples_cat
+                new_samples = full_new_samples
                 del new_samples_cat
 
-            oversampled_X = np.array(oversampled_X)
-            oversampled_y = np.hstack((y, np.full(n_samples, class_sample)))
+            ## Add the generated samples of the class to the final array
+            oversampled_X = np.concatenate((oversampled_X, new_samples), axis=0)
+            oversampled_y = np.hstack(
+                (oversampled_y,np.full(n_samples, class_sample))
+            )
+            del new_samples
 
         if to_return_classifier:
             return oversampled_X, oversampled_y, self.clf
