@@ -8,6 +8,8 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    env:
+      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
 
     steps:
       - name: Checkout code
@@ -28,9 +30,13 @@ jobs:
           python -m build 
 
       - name: Upload to PyPI
-        if: github.event.release.target_commitish == 'main'
+        if: github.event.release.target_commitish == 'main' && env.PYPI_API_TOKEN != ''
         run: |
           twine upload dist/*
         env:
           TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+          TWINE_PASSWORD: ${{ env.PYPI_API_TOKEN }}
+
+      - name: Skip PyPI upload when token is unavailable
+        if: github.event.release.target_commitish == 'main' && env.PYPI_API_TOKEN == ''
+        run: echo "PYPI_API_TOKEN is not configured; skipping PyPI upload."
