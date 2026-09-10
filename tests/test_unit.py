@@ -100,3 +100,32 @@ def test_invalid_input_raises_for_single_class():
     sampler = _instantiate(MGSGRFOverSampler ,K=X.shape[1], random_state=0)
     with pytest.raises(Exception):
         _fit_resample(sampler, X, y)
+
+
+def test_multiclass_with_categorical_features():
+    MGSGRFOverSampler = _get_oversampler_class()
+    rng = np.random.RandomState(42)
+    col0 = rng.choice(['A', 'B', 'C'], size=(100, 1))
+    col1 = rng.randn(100, 1)
+    col2 = rng.choice(['X', 'Y'], size=(100, 1))
+    col3 = rng.randn(100, 1)
+    X = np.hstack([col0, col1, col2, col3])
+    y = np.array([0] * 60 + [1] * 25 + [2] * 15)
+
+    for clf_name in ['grf', '1-nn', '5-nn']:
+        sampler = _instantiate(
+            MGSGRFOverSampler,
+            K=2,
+            categorical_features=[0, 2],
+            classifier=clf_name,
+            random_state=42,
+        )
+        X_res, y_res = _fit_resample(sampler, X, y)
+        assert X_res.shape == (180, 4)
+        assert _counts(y_res) == {0: 60, 1: 60, 2: 60}
+        # Check column index preservation for synthetic rows
+        gen_row = X_res[100]
+        assert gen_row[0] in ['A', 'B', 'C']
+        assert gen_row[2] in ['X', 'Y']
+        float(gen_row[1])
+        float(gen_row[3])
